@@ -1,8 +1,8 @@
 {
     "name": "meng-yan-chen",
     "display_name": "梦晏晨 · 文辞净斋",
-    "description": "三路并进：文字清洗与名字修正",
+    "description": "文字净化与修正",
     "main": "index.js",
-    "version": "1.3.0",
+    "version": "1.5.0",
     "author": "lishg1170"
 }
