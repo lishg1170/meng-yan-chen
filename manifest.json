@@ -1,8 +1,8 @@
 {
     "name": "meng-yan-chen",
     "display_name": "梦晏晨 · 文辞净斋",
-    "description": "文字清洗与名字修正插件",
+    "description": "文字清洗与名字修正",
     "main": "index.js",
-    "version": "1.0.0",
-    "author": "你的名字"
+    "version": "1.1.0",
+    "author": "lishg1170"
 }
