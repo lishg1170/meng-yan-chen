@@ -1,8 +1,11 @@
 {
-    "name": "meng-yan-chen",
     "display_name": "梦晏晨 · 文辞净斋",
-    "description": "文字净化与修正",
-    "main": "index.js",
-    "version": "1.5.0",
-    "author": "lishg1170"
+    "name": "meng-yan-chen",
+    "description": "文字净化与修正：自动修复译名、剔除冗余词汇。",
+    "author": "lishg1170",
+    "version": "2.0.0",
+    "loading_order": 1,
+    "js": "index.js",
+    "requires": [],
+    "optional": []
 }
