@@ -1,22 +1,20 @@
-// 注意这里：改成了 ../../ 
 import { eventSource, event_types, extension_settings, getContext, saveSettingsDebounced } from '../../extensions.js';
 
 const PLUGIN_ID = 'meng-yan-chen';
+const PLUGIN_NAME = '梦晏晨 · 文辞净斋';
 
-// 默认配置
+// 1. 初始化设置
 const defaultSettings = {
     nameFixMap: { '林晟': '林晨', '林辰': '林晨', '洛君景': '洛君瑾' },
     banListSimple: ['指尖', '深邃', '眸子', '博弈', '石像', '野兽', '公狗', '母狗', '笼中鸟', '缠绵', '羁绊', '宿命', '暗流涌动', '瓷娃娃', '木偶', '提线木偶'],
-    banListRegex: ['像.{0,10}(?:石头|木头|冰块)', '眼神中闪过一丝.{0,15}'],
 };
 
-// 初始化设置
 if (!extension_settings[PLUGIN_ID]) {
     extension_settings[PLUGIN_ID] = Object.assign({}, defaultSettings);
 }
 let settings = extension_settings[PLUGIN_ID];
 
-// 清洗逻辑
+// 2. 清洗逻辑
 function cleanText(text) {
     if (!text || typeof text !== 'string') return text;
     let res = text;
@@ -25,72 +23,80 @@ function cleanText(text) {
     return res;
 }
 
-// 弹窗界面
+// 3. 设置面板 UI
 function showSettings() {
+    $('#meng-modal').remove();
     const html = `
-    <div id="meng-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
-        <div style="background:#1a1a2e; border:2px solid #a78bfa; padding:25px; border-radius:15px; width:400px; color:white; box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);">
-            <h3 style="margin-top:0; color:#a78bfa; text-align:center;">✧ 梦晏晨 · 设置面板 ✧</h3>
-            <hr style="border:0.5px solid #333; margin:15px 0;">
-            <p>修改屏蔽词 (换行分隔):</p>
-            <textarea id="meng-simple-in" style="width:100%; height:120px; background:#0f0f1a; color:white; border:1px solid #444; border-radius:8px; padding:10px;">${settings.banListSimple.join('\n')}</textarea>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="meng-save" style="flex:1; padding:10px; background:#a78bfa; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">保存设置</button>
-                <button id="meng-close" style="flex:1; padding:10px; background:#444; border:none; border-radius:8px; cursor:pointer; color:white;">关闭</button>
+    <div id="meng-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+        <div style="background:var(--mainColor, #1a1a2e); border:2px solid #a78bfa; padding:20px; border-radius:15px; width:400px; color:white; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+            <h3 style="text-align:center; color:#a78bfa; margin-top:0;">✧ ${PLUGIN_NAME} ✧</h3>
+            <div style="margin-top:15px;">
+                <label>屏蔽词列表 (一行一个):</label>
+                <textarea id="meng-in" class="text_pole" style="width:100%; height:180px; margin-top:10px; font-family:monospace;">${settings.banListSimple.join('\n')}</textarea>
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button id="meng-ok" class="menu_button" style="flex:1; background:#7c3aed !important; color:white !important;">保存设置</button>
+                <button id="meng-no" class="menu_button" style="flex:1;">关闭</button>
             </div>
         </div>
     </div>`;
-    
     $('body').append(html);
-    
-    $('#meng-close').on('click', () => $('#meng-modal').remove());
-    $('#meng-save').on('click', () => {
-        settings.banListSimple = $('#meng-simple-in').val().split('\n').filter(x => x.trim());
+    $('#meng-no').click(() => $('#meng-modal').remove());
+    $('#meng-ok').click(() => {
+        settings.banListSimple = $('#meng-in').val().split('\n').filter(x => x.trim());
         saveSettingsDebounced();
         $('#meng-modal').remove();
-        if (window.toastr) window.toastr.success('梦晏晨：设置已保存！');
+        if (window.toastr) window.toastr.success('梦晏晨：配置已保存！');
     });
 }
 
-// 启动逻辑
-function init() {
-    console.log("[梦晏晨] 插件正在加载...");
-    
-    // 1. 注入右下角熊猫
-    if (!$('#meng-panda').length) {
-        const panda = $('<div id="meng-panda" style="position:fixed; bottom:25px; right:25px; z-index:9999; cursor:pointer; font-size:32px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); transition: transform 0.2s;">🐼</div>');
-        panda.hover(() => panda.css('transform', 'scale(1.2)'), () => panda.css('transform', 'scale(1)'));
-        $('body').append(panda);
-        panda.on('click', showSettings);
+// 4. 注入三个入口
+function injectExtensions() {
+    console.log("[梦晏晨] 开始多路注入...");
+
+    // 入口 A: 顶部图标栏 (Top Bar)
+    if (!$('#meng-top-icon').length) {
+        const topIcon = $(`<div id="meng-top-icon" class="fa-solid fa-broom nav-bar-item" title="${PLUGIN_NAME}" style="cursor:pointer; font-size:20px; order: 10;"></div>`);
+        $('.nav-bar-right').prepend(topIcon); // 插入到右侧图标栏最前面
+        topIcon.on('click', showSettings);
     }
 
-    // 2. 注入左侧菜单
-    const menuBtn = `
-        <div class="inline-drawer">
-            <div class="inline-drawer-header">
-                <div class="inline-drawer-title">梦晏晨 · 文辞净斋</div>
-                <div id="meng-gear" style="cursor:pointer; padding:0 10px;">⚙️</div>
-            </div>
-        </div>`;
-    $('#extensions_settings').append(menuBtn);
-    $('#meng-gear').on('click', showSettings);
+    // 入口 B: 扩展菜单 (Extensions Drawer)
+    if (!$('#meng-drawer').length) {
+        const drawerHtml = `
+            <div id="meng-drawer" class="inline-drawer">
+                <div class="inline-drawer-header">
+                    <div class="inline-drawer-icon"><i class="fa-solid fa-broom"></i></div>
+                    <div class="inline-drawer-title">${PLUGIN_NAME}</div>
+                    <div class="inline-drawer-icon meng-settings-click" style="cursor:pointer;"><i class="fa-solid fa-gear"></i></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <div class="menu_button meng-settings-click">打开净化配置</div>
+                </div>
+            </div>`;
+        $('#extensions_settings').append(drawerHtml);
+        $('.meng-settings-click').on('click', showSettings);
+    }
 
-    // 3. 弹出欢迎信息
-    setTimeout(() => {
-        if (window.toastr) window.toastr.info('梦晏晨插件已就绪 🐼');
-    }, 2000);
+    // 入口 C: 魔法棒/快速操作 (Quick Action)
+    if (!$('#meng-quick-action').length) {
+        // 尝试在消息模板或魔法棒区域添加一个按钮 (取决于酒馆版本)
+        const quickBtn = $(`<div id="meng-quick-action" class="menu_button fa-solid fa-broom" title="${PLUGIN_NAME}" style="display:inline-block; width:auto; margin:5px;"> 清洗配置</div>`);
+        $('#quick_continuation_container').append(quickBtn); // 这是酒馆内置的一个快速容器
+        quickBtn.on('click', showSettings);
+    }
 }
 
-// 执行初始化
+// 启动
 $(document).ready(() => {
-    init();
+    // 延迟注入，确保酒馆 DOM 加载完毕
+    setTimeout(injectExtensions, 2000);
     
-    // 拦截消息处理
+    // 拦截消息渲染
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (msgId) => {
         const context = getContext();
-        const msg = context.chat[msgId];
-        if (msg) {
-            msg.mes = cleanText(msg.mes);
+        if (context.chat && context.chat[msgId]) {
+            context.chat[msgId].mes = cleanText(context.chat[msgId].mes);
         }
     });
 });
