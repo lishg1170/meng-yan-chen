@@ -1,69 +1,101 @@
 (function () {
-    // 这是一个检查函数，专门看酒馆准备好没有
-    function startup() {
-        // 检查全局变量是否存在
-        if (!window.SillyTavern || !window.SillyTavern.extensions || !window.SillyTavern.extensions.extension_settings) {
-            console.log("[梦晏晨] 酒馆核心尚未加载，1秒后重试...");
-            return; // 还没准备好，跳出，等下次定时器触发
+
+    const extensionName = "meng-yan-chen";
+
+    // 延迟注册，确保 Tavern 初始化完成
+    function setupExtension() {
+        if (!window.SillyTavern || !window.SillyTavern.extensions) {
+            setTimeout(setupExtension, 500);
+            return;
         }
 
-        // 走到这里，说明酒馆终于“出生”了！
-        clearInterval(loadTimer); // 停止复读机
-        
-        const ST = window.SillyTavern.extensions;
-        const PID = 'meng-yan-chen';
+        const extensionSettings = window.SillyTavern.extensions.extension_settings;
 
-        // 1. 初始化设置
-        if (!ST.extension_settings[PID]) {
-            ST.extension_settings[PID] = {
+        // 默认配置
+        if (!extensionSettings[extensionName]) {
+            extensionSettings[extensionName] = {
                 nameFixMap: { '林晟': '林晨', '林辰': '林晨', '洛君景': '洛君瑾' },
-                banListSimple: ['指尖', '深邃', '眸子', '博弈', '石像', '野兽', '公狗', '母狗', '笼中鸟', '缠绵', '羁绊', '宿命', '暗流涌动', '瓷娃娃', '木偶', '提线木偶'],
+                banListSimple: ['指尖','深邃','眸子','博弈','石像','野兽','公狗','母狗','笼中鸟','缠绵','羁绊','宿命','暗流涌动','瓷娃娃','木偶','提线木偶']
             };
         }
-        const set = ST.extension_settings[PID];
 
-        // 2. 清洗逻辑
-        const doClean = (t) => {
-            if (!t || typeof t !== 'string') return t;
-            let r = t;
-            for (let [w, c] of Object.entries(set.nameFixMap)) r = r.split(w).join(c);
-            set.banListSimple.forEach(w => { r = r.split(w).join(''); });
-            return r;
-        };
+        const settings = extensionSettings[extensionName];
 
-        // 3. UI 界面
-        const showUI = () => {
-            const h = `<div id="m-m" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);"><div style="background:var(--mainColor,#1a1a2e);padding:20px;border-radius:15px;width:300px;color:#fff;border:1px solid #a78bfa;"><h3 style="text-align:center">梦晏晨配置</h3><textarea id="m-i" class="text_pole" style="width:100%;height:150px;background:#000;color:#fff;">${set.banListSimple.join('\n')}</textarea><button id="m-s" class="menu_button" style="width:100%;margin-top:10px;background:#7c3aed !important;">保存</button><button id="m-c" class="menu_button" style="width:100%;margin-top:5px;">关闭</button></div></div>`;
-            jQuery('body').append(h);
-            jQuery('#m-c').on('click', () => jQuery('#m-m').remove());
-            jQuery('#m-s').on('click', () => {
-                set.banListSimple = jQuery('#m-i').val().split('\n').filter(x => x.trim());
-                ST.saveSettingsDebounced();
-                jQuery('#m-m').remove();
+        // 清洗函数
+        function cleanText(text) {
+            if (!text || typeof text !== 'string') return text;
+            let res = text;
+            for (const [w, c] of Object.entries(settings.nameFixMap)) res = res.split(w).join(c);
+            settings.banListSimple.forEach(word => { res = res.split(word).join(''); });
+            return res;
+        }
+
+        // 设置面板 UI
+        function showSettings() {
+            if (document.getElementById('meng-modal')) return;
+            const html = `
+            <div id="meng-modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+                <div style="background:var(--mainColor);border:2px solid #a78bfa;padding:20px;border-radius:15px;width:85%;max-width:400px;color:white;">
+                    <h3 style="text-align:center;color:#a78bfa;">✧ 梦晏晨 · 文辞净斋 ✧</h3>
+                    <textarea id="meng-in" class="text_pole" style="width:100%;height:200px;margin-top:10px;">${settings.banListSimple.join('\n')}</textarea>
+                    <div style="margin-top:20px;display:flex;gap:10px;">
+                        <button id="meng-ok" class="menu_button" style="flex:1;background:#7c3aed !important;color:white !important;">保存</button>
+                        <button id="meng-no" class="menu_button" style="flex:1;">关闭</button>
+                    </div>
+                </div>
+            </div>`;
+            jQuery(document.body).append(html);
+            jQuery('#meng-no').on('click', () => jQuery('#meng-modal').remove());
+            jQuery('#meng-ok').on('click', () => {
+                settings.banListSimple = jQuery('#meng-in').val().split('\n').filter(x => x.trim());
+                window.SillyTavern.extensions.saveSettingsDebounced();
+                jQuery('#meng-modal').remove();
+                if (window.toastr) window.toastr.success('已存入净斋');
             });
-        };
+        }
 
-        // 4. 注入图标
-        const addIcon = () => {
-            if (jQuery('#meng-top-icon').length) return;
-            const nav = jQuery('.nav-bar-right');
-            if (nav.length) {
-                const b = jQuery('<div id="meng-top-icon" class="fa-solid fa-broom nav-bar-item" title="梦晏晨" style="cursor:pointer;"></div>');
-                nav.prepend(b);
-                b.on('click', showUI);
+        // 注入顶部图标
+        const topBar = jQuery('.nav-bar-right');
+        if (topBar.length && !jQuery('#meng-top-icon').length) {
+            const btn = jQuery('<div id="meng-top-icon" class="fa-solid fa-broom nav-bar-item" title="梦晏晨" style="cursor:pointer"></div>');
+            topBar.prepend(btn);
+            btn.on('click', showSettings);
+        }
+
+        // 注入设置面板
+        const settingsPane = jQuery('#extensions_settings');
+        if (settingsPane.length && !jQuery('#meng-ext-item').length) {
+            const html = `
+                <div id="meng-ext-item" class="inline-drawer">
+                    <div class="inline-drawer-header">
+                        <div class="inline-drawer-icon"><i class="fa-solid fa-broom"></i></div>
+                        <div class="inline-drawer-title">梦晏晨 · 文辞净斋</div>
+                        <div class="inline-drawer-icon meng-gear" style="cursor:pointer;"><i class="fa-solid fa-gear"></i></div>
+                    </div>
+                </div>`;
+            settingsPane.append(html);
+            jQuery('#meng-ext-item .meng-gear').on('click', showSettings);
+        }
+
+        // 注册消息渲染事件
+        window.SillyTavern.extensions.eventSource.on(
+            window.SillyTavern.extensions.event_types.CHARACTER_MESSAGE_RENDERED,
+            (msgId) => {
+                try {
+                    const chat = window.SillyTavern.extensions.getContext()?.chat;
+                    if (chat && chat[msgId]?.mes) {
+                        chat[msgId].mes = cleanText(chat[msgId].mes);
+                    }
+                } catch (e) {
+                    console.error("净斋插件处理消息失败:", e);
+                }
             }
-        };
+        );
 
-        // 5. 绑定事件
-        addIcon();
-        ST.eventSource.on(ST.event_types.CHARACTER_MESSAGE_RENDERED, (id) => {
-            const c = ST.getContext().chat;
-            if (c && c[id]) c[id].mes = doClean(c[id].mes);
-        });
-
-        console.log("[梦晏晨] 终于成功报到了！");
+        console.log("梦晏晨扩展已通过官方协议加载");
     }
 
-    // 启动“复读机”，每 1000 毫秒（1秒）检查一次酒馆有没有准备好
-    const loadTimer = setInterval(startup, 1000);
+    // 延迟执行，确保 DOM 完全就绪
+    jQuery(document).ready(setupExtension);
+
 })();
