@@ -1,3 +1,5 @@
+import { getContext } from "../../../../extensions.js";
+
 (async () => {
 
 console.log("梦晏晨插件加载成功");
@@ -81,34 +83,52 @@ alert("梦晏晨已启动");
             PLUGIN_ID
         });
 
-        try {
-
-            const eventSource =
-                extensions.eventSource;
-
-            const event_types =
-                extensions.event_types;
-
-            eventSource?.on(
-                event_types.MESSAGE_RECEIVED,
-                processMessage
-            );
-
-            eventSource?.on(
-                event_types.MESSAGE_UPDATED,
-                processMessage
-            );
-
-        } catch (e) {
-
-            console.error(e);
-
-        }
-
         console.log(
             "[梦晏晨] 插件已启动"
         );
 
+        const context = getContext();
+
+console.log("[梦晏晨] context:", context);
+
+if (context?.eventSource) {
+    console.log("[梦晏晨] 开始监听消息");
+
+    context.eventSource.on(
+        context.event_types.CHARACTER_MESSAGE_RENDERED,
+        (...args) => {
+
+            console.log("[梦晏晨] 角色消息事件触发", args);
+
+            const msg = args?.[0];
+
+            processMessage(msg);
+        }
+   );
+
+   context.eventSource.on(
+       context.event_types.USER_MESSAGE_RENDERED,
+       (...args) => {
+
+           console.log("[梦晏晨] 用户消息事件触发", args);
+
+           const msg = args?.[0];
+
+           processMessage(msg);
+        }
+   );
+
+    context.eventSource.on(
+        context.event_types.CHAT_CHANGED,
+        (...args) => {
+            console.log("[梦晏晨] 聊天切换事件", args);
+        }
+    );
+
+} else {
+    console.log("[梦晏晨] eventSource不存在");
+}
+    
     });
 
 })();
