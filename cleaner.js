@@ -1,20 +1,19 @@
 (function () {
 
     // ======================
-    // 上下文删句
+    // 上下文整句删除
     // ======================
 
     function cleanByContext(text, settings) {
 
-        if (!settings.contextRules) {
+        if (!settings.contextBanList) {
             return text;
         }
 
-        settings.contextRules.forEach(rule => {
+        settings.contextBanList.forEach(rule => {
 
             try {
 
-                // 删除包含目标模式的整句话
                 const regex = new RegExp(
                     `[^。！？\\n]*${rule}[^。！？\\n]*[。！？]?`,
                     "g"
@@ -25,20 +24,13 @@
             } catch (e) {
 
                 console.warn(
-                    "[梦晏晨] 上下文规则错误:",
+                    "[梦晏晨] 上下文正则错误:",
                     rule
                 );
 
             }
 
         });
-
-        // 清理多余标点和空行
-        text = text
-            .replace(/，{2,}/g, "，")
-            .replace(/。{2,}/g, "。")
-            .replace(/\n{3,}/g, "\n\n")
-            .trim();
 
         return text;
     }
@@ -51,7 +43,7 @@
 
         if (!text) return text;
 
-        // 1. 名字修正
+        // 名字修正
         Object.entries(settings.nameFixMap)
             .forEach(([wrong, correct]) => {
 
@@ -61,10 +53,7 @@
 
             });
 
-        // 2. 上下文删句
-        text = cleanByContext(text, settings);
-
-        // 3. 简单脏词
+        // 简单脏词
         settings.banListSimple.forEach(word => {
 
             text = text
@@ -73,7 +62,7 @@
 
         });
 
-        // 4. 正则清洗
+        // 普通正则
         settings.banListRegex.forEach(pattern => {
 
             try {
@@ -94,6 +83,15 @@
 
         });
 
+        // ⭐ 上下文整句删除
+        text = cleanByContext(text, settings);
+
+        // 清理多余空格换行
+        text = text
+            .replace(/\n{3,}/g, "\n\n")
+            .replace(/([。！？])\1+/g, "$1")
+            .trim();
+
         return text;
     }
 
@@ -102,8 +100,7 @@
     // ======================
 
     window.MengCleaner = {
-        cleanText,
-        cleanByContext
+        cleanText
     };
 
 })();
