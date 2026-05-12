@@ -1,4 +1,4 @@
-function openMengPanel() {
+function openMengPanel(context) {
 
         // 防止重复打开
         if ($("#meng-overlay").length) return;
@@ -187,7 +187,7 @@ cursor:pointer;
     // 注入按钮
     // ======================
 
-    function injectPandaButton() {
+    function injectPandaButton(context) {
 
         const target =
             $("#data_bank_wand_container");
@@ -224,7 +224,9 @@ margin-top:4px;
 </div>
 `);
 
-        btn.on("click", openMengPanel);
+        btn.on("click", () => {
+    openMengPanel(context);
+});
 
         target.append(btn);
 
