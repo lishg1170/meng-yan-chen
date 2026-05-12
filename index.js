@@ -50,7 +50,7 @@ alert("梦晏晨已启动");
 
     extension_settings[PLUGIN_ID] = settings;
     
-    function processMessage(msg) {
+    function processMessage(msg, messageId){
 
         console.log(
     "[梦晏晨] processMessage触发",
@@ -60,6 +60,10 @@ alert("梦晏晨已启动");
         if (!window.MengCleaner) return;
 
         if (!msg?.mes && !msg?.content) return;
+
+        // 防止重复清洗
+
+        if (msg._meng_cleaned) return;
 
         const field = msg.mes ? "mes" : "content";
 
@@ -74,7 +78,37 @@ alert("梦晏晨已启动");
                 "[梦晏晨] 已检测到可清洗内容"
             );
 
-            // 只改 DOM
+            // 更新内存消息
+            msg[field] = cleaned;
+
+            msg._meng_cleaned = true;
+
+            const chat =
+                window.SillyTavern
+                    ?.getContext?.()
+                    ?.chat;
+
+            if (chat?.[messageId]) {
+
+                chat[messageId][field] = cleaned;
+
+                chat[messageId]._meng_cleaned = true;
+            }
+
+            // 更新DOM            
+            const mesBlock =
+                document.querySelector(
+                    `#chat .mes[mesid="${messageId}"] .mes_text`
+                );
+
+            if (mesBlock) {
+                mesBlock.textContent = cleaned;
+                console.log(
+                    "[梦晏晨] DOM已更新"
+
+                );
+
+            }
         }
     }
 
@@ -104,11 +138,18 @@ if (context?.eventSource) {
 
             console.log("[梦晏晨] 角色消息事件触发", args);
 
-            const msg = args?.[0];
+            const messageId = String(args?.[0]);
 
-            const cloned = structuredClone(msg);
+            const chat =
+                window.SillyTavern
+                    ?.getContext?.()
+                    ?.chat;
 
-            processMessage(cloned);
+            const msg = chat?.[messageId];
+
+            if (!msg) return;
+
+            processMessage(msg, messageId);
         }
    );
 
@@ -118,11 +159,18 @@ if (context?.eventSource) {
 
            console.log("[梦晏晨] 用户消息事件触发", args);
 
-           const msg = args?.[0];
+           const messageId = String(args?.[0]);
 
-           const cloned = structuredClone(msg);
+           const chat =
+               window.SillyTavern
+                   ?.getContext?.()
+                   ?.chat;
 
-           processMessage(cloned);
+           const msg = chat?.[messageId];
+
+           if (!msg) return;
+
+           processMessage(msg, messageId);
         }
    );
 
