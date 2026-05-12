@@ -1,51 +1,47 @@
-(function () {
+function cleanText(text, settings) {
 
-    function cleanText(text, settings) {
+    if (!text) return text;
 
-        if (!text) return text;
-
-        Object.entries(settings.nameFixMap)
-            .forEach(([wrong, correct]) => {
-
-                text = text
-                    .split(wrong)
-                    .join(correct);
-
-            });
-
-        settings.banListSimple.forEach(word => {
+    Object.entries(settings.nameFixMap)
+        .forEach(([wrong, correct]) => {
 
             text = text
-                .split(word)
-                .join("");
+                .split(wrong)
+                .join(correct);
 
         });
 
-        settings.banListRegex.forEach(pattern => {
+    settings.banListSimple.forEach(word => {
 
-            try {
+        text = text
+            .split(word)
+            .join("");
 
-                text = text.replace(
-                    new RegExp(pattern, "g"),
-                    ""
-                );
+    });
 
-            } catch (e) {
+    settings.banListRegex.forEach(pattern => {
 
-                console.warn(
-                    "[梦晏晨] 正则错误:",
-                    pattern
-                );
+        try {
 
-            }
+            text = text.replace(
+                new RegExp(pattern, "g"),
+                ""
+            );
 
-        });
+        } catch (e) {
 
-        return text;
-    }
+            console.warn(
+                "[梦晏晨] 正则错误:",
+                pattern
+            );
 
-    window.MengCleaner = {
-        cleanText
-    };
+        }
 
-})();
+    });
+
+    return text;
+}
+
+window.MengCleaner = {
+    cleanText
+};
