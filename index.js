@@ -93,7 +93,7 @@
         if($('#meng-panda-btn').length) return;
 
         const btn=$(`
-            <div id="meng-panda-btn" title="梦晏晨 · 文辞净斋" style="cursor:pointer; font-size:1.4rem;">🐼</div>
+            <div id="meng-panda-btn" title="梦晏晨 · 文辞净斋" style="cursor:pointer; font-size:1.4rem;">🐼梦晏晨</div>
         `);
         btn.on('click',()=>{
             const panel=createSettingsPanel();
