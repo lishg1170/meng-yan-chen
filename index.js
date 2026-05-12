@@ -13,7 +13,7 @@
     let settings = extension_settings[PLUGIN_ID] || defaultSettings;
     if (!extension_settings[PLUGIN_ID]) extension_settings[PLUGIN_ID] = settings;
 
-    // ===== 文本清洗 =====
+    // 文本清洗
     function cleanText(text) {
         if (!text) return text;
         Object.entries(settings.nameFixMap).forEach(([wrong,correct])=>{
@@ -36,7 +36,7 @@
         }
     }
 
-    // ===== 创建设置面板 =====
+    // 创建设置面板
     function createSettingsPanel(){
         const panel = $(`
         <div style="padding:16px; max-width:400px; color: var(--SmartThemeTextColor); font-family: var(--mainFontFamily);">
@@ -86,7 +86,7 @@
         return panel;
     }
 
-    // ===== 注入小熊猫按钮 =====
+    // 注入小熊猫按钮
     function injectPandaButton(){
         const target = $('#data_bank_wand_container');
         if(!target.length) return setTimeout(injectPandaButton,300);
@@ -104,7 +104,7 @@
         console.log('[梦晏晨] 🐼 小熊猫按钮已就位');
     }
 
-    // ===== 初始化 =====
+    // 初始化
     $(document).ready(()=>{
         injectPandaButton();
         try{
