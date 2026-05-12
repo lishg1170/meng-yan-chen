@@ -71,6 +71,7 @@ alert("梦晏晨已启动");
             window.MengCleaner.cleanText(
                 msg[field],
                 settings
+                );
 
                 console.log(
                     "[梦晏晨] 清洗前:",
