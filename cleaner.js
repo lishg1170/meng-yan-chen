@@ -8,10 +8,13 @@ function cleanByContext(text, settings) {
 
         try {
 
-            // 匹配整句
+            // 匹配：
+            // 从最近的句子起点
+            // 一直到句尾
+
             const regex = new RegExp(
-    `([^。！？；\\n]*${rule}(?:般|地|似地|一样)?[^。！？；\\n]*)`,
-    "g"
+                `[^。！？\\n]*${rule}[^。！？\\n]*[。！？]?`,
+                "g"
             );
 
             text = text.replace(regex, "");
@@ -27,60 +30,13 @@ function cleanByContext(text, settings) {
 
     });
 
-    // 清理多余空行
+    // 清理残留标点
     text = text
+        .replace(/,{2,}/g, ",")
+        .replace(/，{2,}/g, "，")
+        .replace(/。{2,}/g, "。")
         .replace(/\n{3,}/g, "\n\n")
-        .replace(/[，。]{2,}/g, "。");
-
-    return text;
-}
-
-function cleanText(text, settings) {
-
-    if (!text) return text;
-
-    // 1. 名字修正
-    Object.entries(settings.nameFixMap)
-        .forEach(([wrong, correct]) => {
-
-            text = text
-                .split(wrong)
-                .join(correct);
-
-        });
-
-    // 2. 上下文删句（必须在简单删词前）
-    text = cleanByContext(text, settings);
-
-    // 3. 简单脏词
-    settings.banListSimple.forEach(word => {
-
-        text = text
-            .split(word)
-            .join("");
-
-    });
-
-    // 4. 正则清洗
-    settings.banListRegex.forEach(pattern => {
-
-        try {
-
-            text = text.replace(
-                new RegExp(pattern, "g"),
-                ""
-            );
-
-        } catch (e) {
-
-            console.warn(
-                "[梦晏晨] 正则错误:",
-                pattern
-            );
-
-        }
-
-    });
+        .replace(/^\s+|\s+$/g, "");
 
     return text;
 }
