@@ -46,8 +46,13 @@
     );
 
     extension_settings[PLUGIN_ID] = settings;
-
+    
     function processMessage(msg) {
+
+        console.log(
+    "[梦晏晨] processMessage触发",
+    msg
+);
 
         if (!window.MengCleaner) return;
 
