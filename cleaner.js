@@ -1,59 +1,33 @@
-function processMessage(msg, messageId){
+window.MengCleaner = {
 
-    console.log(
-        "[梦晏晨] processMessage触发",
-        msg
-    );
+    cleanText(text, settings) {
 
-    if (!window.MengCleaner) return;
+        if (!text) return text;
 
-    if (!msg?.mes && !msg?.content) return;
+        let result = text;
 
-    if (msg._meng_cleaned) return;
+        // 名字替换
+        for (const [from, to] of Object.entries(settings.nameFixMap || {})) {
 
-    const field = msg.mes ? "mes" : "content";
-
-    const cleaned =
-        window.MengCleaner.cleanText(
-            msg[field],
-            settings
-        );
-
-    if (cleaned !== msg[field]) {
-
-        console.log(
-            "[梦晏晨] 已检测到可清洗内容"
-        );
-
-        msg[field] = cleaned;
-
-        const chat =
-            window.SillyTavern
-                ?.getContext?.()
-                ?.chat;
-
-        if (chat?.[messageId]) {
-
-            chat[messageId][field] =
-                cleaned;
-
-            chat[messageId]._meng_cleaned =
-                true;
+            result = result.replaceAll(from, to);
         }
 
-        const mesBlock =
-            document.querySelector(
-                `#chat .mes[mesid="${messageId}"] .mes_text`
-            );
+        // 简单违禁词
+        for (const word of settings.banListSimple || []) {
 
-        if (mesBlock) {
-
-            mesBlock.textContent =
-                cleaned;
-
-            console.log(
-                "[梦晏晨] DOM已更新"
-            );
+            result = result.replaceAll(word, "");
         }
+
+        // 正则违禁
+        for (const rule of settings.banListRegex || []) {
+
+            result =
+                result.replace(
+                    new RegExp(rule, "g"),
+                    ""
+                );
+        }
+
+        return result;
     }
-}
+};
