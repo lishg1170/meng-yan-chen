@@ -1,12 +1,7 @@
-(function () {
+(async () => {
 
-    const script = document.createElement("script");
-script.src = "/scripts/extensions/third-party/meng-yan-chen/cleaner.js";
-document.head.appendChild(script);
-
-    const uiScript = document.createElement("script");
-uiScript.src = "/scripts/extensions/third-party/meng-yan-chen/ui.js";
-document.head.appendChild(uiScript);
+    await import("./cleaner.js");
+    await import("./ui.js");
 
     const PLUGIN_ID = "meng-yan-chen";
 
@@ -15,11 +10,8 @@ document.head.appendChild(uiScript);
     const saveSettingsDebounced =
         extensions.saveSettingsDebounced || (() => { });
 
-    // ======================
-    // 默认设置
-    // ======================
-
     const defaultSettings = {
+
         nameFixMap: {
             "林晟": "林晨",
             "林辰": "林晨"
@@ -44,10 +36,6 @@ document.head.appendChild(uiScript);
 
     extension_settings[PLUGIN_ID] = settings;
 
-    // ======================
-    // 处理消息
-    // ======================
-
     function processMessage(msg) {
 
         if (!window.MengCleaner) return;
@@ -57,26 +45,22 @@ document.head.appendChild(uiScript);
         const field = msg.mes ? "mes" : "content";
 
         const cleaned =
-    window.MengCleaner.cleanText(
-        msg[field],
-        settings
-    );
+            window.MengCleaner.cleanText(
+                msg[field],
+                settings
+            );
 
         msg[field] = cleaned;
     }
 
-    // ======================
-    // 初始化
-    // ======================
-
     $(document).ready(() => {
 
-window.MengUI?.injectPandaButton({
-    settings,
-    extension_settings,
-    saveSettingsDebounced,
-    PLUGIN_ID
-});
+        window.MengUI?.injectPandaButton({
+            settings,
+            extension_settings,
+            saveSettingsDebounced,
+            PLUGIN_ID
+        });
 
         try {
 
