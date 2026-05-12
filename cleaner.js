@@ -1,106 +1,71 @@
-(function () {
+function cleanText(text, settings) {
+
+    if (!text) return text;
 
     // ======================
-    // 上下文整句删除
+    // 1. 上下文整句删除（最先）
     // ======================
 
-    function cleanByContext(text, settings) {
+    text = cleanByContext(text, settings);
 
-        if (!settings.contextBanList) {
-            return text;
+    // ======================
+    // 2. 普通正则
+    // ======================
+
+    settings.banListRegex.forEach(pattern => {
+
+        try {
+
+            text = text.replace(
+                new RegExp(pattern, "g"),
+                ""
+            );
+
+        } catch (e) {
+
+            console.warn(
+                "[梦晏晨] 正则错误:",
+                pattern
+            );
+
         }
 
-        settings.contextBanList.forEach(rule => {
-
-            try {
-
-                const regex = new RegExp(
-                    `[^。！？\\n]*${rule}[^。！？\\n]*[。！？]?`,
-                    "g"
-                );
-
-                text = text.replace(regex, "");
-
-            } catch (e) {
-
-                console.warn(
-                    "[梦晏晨] 上下文正则错误:",
-                    rule
-                );
-
-            }
-
-        });
-
-        return text;
-    }
+    });
 
     // ======================
-    // 主清洗
+    // 3. 简单脏词
     // ======================
 
-    function cleanText(text, settings) {
+    settings.banListSimple.forEach(word => {
 
-        if (!text) return text;
+        text = text
+            .split(word)
+            .join("");
 
-        // 名字修正
-        Object.entries(settings.nameFixMap)
-            .forEach(([wrong, correct]) => {
+    });
 
-                text = text
-                    .split(wrong)
-                    .join(correct);
+    // ======================
+    // 4. 名字修正
+    // ======================
 
-            });
-
-        // 简单脏词
-        settings.banListSimple.forEach(word => {
+    Object.entries(settings.nameFixMap)
+        .forEach(([wrong, correct]) => {
 
             text = text
-                .split(word)
-                .join("");
+                .split(wrong)
+                .join(correct);
 
         });
 
-        // 普通正则
-        settings.banListRegex.forEach(pattern => {
-
-            try {
-
-                text = text.replace(
-                    new RegExp(pattern, "g"),
-                    ""
-                );
-
-            } catch (e) {
-
-                console.warn(
-                    "[梦晏晨] 正则错误:",
-                    pattern
-                );
-
-            }
-
-        });
-
-        // ⭐ 上下文整句删除
-        text = cleanByContext(text, settings);
-
-        // 清理多余空格换行
-        text = text
-            .replace(/\n{3,}/g, "\n\n")
-            .replace(/([。！？])\1+/g, "$1")
-            .trim();
-
-        return text;
-    }
-
     // ======================
-    // 暴露 API
+    // 5. 清理残留
     // ======================
 
-    window.MengCleaner = {
-        cleanText
-    };
+    text = text
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/([。！？])\1+/g, "$1")
+        .replace(/，{2,}/g, "，")
+        .trim();
 
-})();
+    return text;
+}
