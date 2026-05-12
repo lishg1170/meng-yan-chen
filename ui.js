@@ -231,9 +231,8 @@ margin-top:4px;
         console.log(
             "[梦晏晨] 🐼 已成功注入"
         );
-    }
-
 window.MengUI = {
     openMengPanel,
     injectPandaButton
 };
+    }
