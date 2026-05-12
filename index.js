@@ -1,11 +1,14 @@
 (function () {
 
-    const basePath =
-"/scripts/extensions/third-party/meng-yan-chen/";
+    const currentScript = document.currentScript?.src || "";
+const basePath = currentScript.substring(
+    0,
+    currentScript.lastIndexOf("/") + 1
+);
 
-const script = document.createElement("script");
-script.src = basePath + "cleaner.js";
-document.head.appendChild(script);
+const cleanerScript = document.createElement("script");
+cleanerScript.src = basePath + "cleaner.js";
+document.head.appendChild(cleanerScript);
 
 const uiScript = document.createElement("script");
 uiScript.src = basePath + "ui.js";
