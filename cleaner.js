@@ -4,30 +4,83 @@ window.MengCleaner = {
 
         if (!text) return text;
 
-        let result = text;
+        let cleaned = text;
 
-        // 名字替换
-        for (const [from, to] of Object.entries(settings.nameFixMap || {})) {
+        //
+        // 1. 名字修正
+        //
+        for (const [from, to] of Object.entries(
+            settings.nameFixMap || {}
+        )) {
 
-            result = result.replaceAll(from, to);
+            cleaned =
+                cleaned.replaceAll(from, to);
         }
 
-        // 简单违禁词
-        for (const word of settings.banListSimple || []) {
+        //
+        // 2. 简单替换
+        //
+        for (const rule of settings.simpleReplacements || []) {
 
-            result = result.replaceAll(word, "");
-        }
-
-        // 正则违禁
-        for (const rule of settings.banListRegex || []) {
-
-            result =
-                result.replace(
-                    new RegExp(rule, "g"),
-                    ""
+            cleaned =
+                cleaned.replaceAll(
+                    rule.from,
+                    rule.to
                 );
         }
 
-        return result;
+        //
+        // 3. regex规则
+        //
+        for (const rule of settings.regexRules || []) {
+
+            try {
+
+                const regex =
+                    new RegExp(
+                        rule.pattern,
+                        rule.flags || "g"
+                    );
+
+                cleaned =
+                    cleaned.replace(
+                        regex,
+                        rule.replacement || ""
+                    );
+
+            } catch (err) {
+
+                console.warn(
+                    "[梦晏晨] regex规则错误",
+                    rule,
+                    err
+                );
+            }
+        }
+
+        //
+        // 4. 句子清理
+        //
+
+        // 删除连续空行
+        cleaned =
+            cleaned.replace(/\n{3,}/g, "\n\n");
+
+        // 删除多余空格
+        cleaned =
+            cleaned.replace(/[ \t]{2,}/g, " ");
+
+        // 修复中文标点
+        cleaned =
+            cleaned
+                .replace(/，\s*，/g, "，")
+                .replace(/。\s*。/g, "。")
+                .replace(/：\s*：/g, "：");
+
+        // 删除残缺“的”
+        cleaned =
+            cleaned.replace(/的([，。])/g, "$1");
+
+        return cleaned.trim();
     }
 };
