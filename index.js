@@ -1,3 +1,7 @@
+const script = document.createElement("script");
+script.src = `/scripts/extensions/third-party/meng-yan-chen/cleaner.js`;
+document.head.appendChild(script);
+
 (function () {
 
     const PLUGIN_ID = "meng-yan-chen";
@@ -37,47 +41,6 @@
     extension_settings[PLUGIN_ID] = settings;
 
     // ======================
-    // 文本清洗
-    // ======================
-
-    function cleanText(text) {
-
-        if (!text) return text;
-
-        Object.entries(settings.nameFixMap)
-            .forEach(([wrong, correct]) => {
-
-                text = text
-                    .split(wrong)
-                    .join(correct);
-
-            });
-
-        settings.banListSimple.forEach(word => {
-
-            text = text
-                .split(word)
-                .join("");
-
-        });
-
-        settings.banListRegex.forEach(pattern => {
-
-            try {
-
-                text = text.replace(
-                    new RegExp(pattern, "g"),
-                    ""
-                );
-
-            } catch (e) { }
-
-        });
-
-        return text;
-    }
-
-    // ======================
     // 处理消息
     // ======================
 
@@ -88,7 +51,10 @@
         const field = msg.mes ? "mes" : "content";
 
         const cleaned =
-            cleanText(msg[field]);
+    window.MengCleaner.cleanText(
+        msg[field],
+        settings
+    );
 
         msg[field] = cleaned;
     }
