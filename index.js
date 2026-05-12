@@ -4,6 +4,10 @@
 script.src = "/scripts/extensions/third-party/meng-yan-chen/cleaner.js";
 document.head.appendChild(script);
 
+    const uiScript = document.createElement("script");
+uiScript.src = "/scripts/extensions/third-party/meng-yan-chen/ui.js";
+document.head.appendChild(uiScript);
+
     const PLUGIN_ID = "meng-yan-chen";
 
     const extensions = window.SillyTavern?.extensions || {};
@@ -67,7 +71,12 @@ document.head.appendChild(script);
 
     $(document).ready(() => {
 
-        injectPandaButton();
+window.MengUI?.injectPandaButton({
+    settings,
+    extension_settings,
+    saveSettingsDebounced,
+    PLUGIN_ID
+});
 
         try {
 
