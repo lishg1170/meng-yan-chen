@@ -1,5 +1,10 @@
 function cleanText(text, settings) {
 
+    console.log(
+    "[梦晏晨] cleanText执行:",
+    text
+    );
+
     if (!text) return text;
 
     // ======================
