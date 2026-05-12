@@ -1,17 +1,11 @@
 (function () {
 
-    const currentScript = document.currentScript?.src || "";
-const basePath = currentScript.substring(
-    0,
-    currentScript.lastIndexOf("/") + 1
-);
+    const script = document.createElement("script");
+script.src = "/scripts/extensions/third-party/meng-yan-chen/cleaner.js";
+document.head.appendChild(script);
 
-const cleanerScript = document.createElement("script");
-cleanerScript.src = basePath + "cleaner.js";
-document.head.appendChild(cleanerScript);
-
-const uiScript = document.createElement("script");
-uiScript.src = basePath + "ui.js";
+    const uiScript = document.createElement("script");
+uiScript.src = "/scripts/extensions/third-party/meng-yan-chen/ui.js";
 document.head.appendChild(uiScript);
 
     const PLUGIN_ID = "meng-yan-chen";
