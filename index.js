@@ -87,29 +87,36 @@
     }
 
     // 注入小熊猫按钮（带文字“梦晏晨”）
-    function injectPandaButton(){
-        const target = $('#data_bank_wand_container');
-        if(!target.length) return setTimeout(injectPandaButton,300);
-        if($('#meng-panda-btn').length) return;
+   function injectPandaButton(){
+    const target = $('#data_bank_wand_container');
+    if(!target.length) return setTimeout(injectPandaButton,300);
+    if($('#meng-panda-btn').length) return;
 
-        const btn=$(`
-            <div id="meng-panda-btn" title="梦晏晨 · 文辞净斋" 
-                style="cursor:pointer; font-size:1.2rem; display:flex; align-items:center; gap:4px;">
-                <span>🐼</span><span>梦晏晨</span>
-            </div>
-        `);
+    const btn=$(`
+        <div id="meng-panda-btn" title="梦晏晨 · 文辞净斋" 
+            style="cursor:pointer; font-size:1.2rem; display:flex; align-items:center; gap:4px;">
+            <span>🐼</span><span>梦晏晨</span>
+        </div>
+    `);
 
-        btn.on('click',()=>{
-            const panel=createSettingsPanel();
-            // showModal 在 Tauritavern 中必须存在才能弹出
-            if(typeof showModal==='function') showModal(panel[0],{
-                title:'梦晏晨 · 设置', width:'600px', height:'auto'
-            });
-        });
+    btn.on('click',()=>{
+        const panel=createSettingsPanel();
 
-        target.append(btn);
-        console.log('[梦晏晨] 🐼 梦晏晨按钮已就位');
-    }
+        // 等待 showModal 就绪再执行
+        function tryShowModal() {
+            if(typeof showModal==='function'){
+                showModal(panel[0],{title:'梦晏晨 · 设置', width:'600px', height:'auto'});
+            } else {
+                setTimeout(tryShowModal,100);
+            }
+        }
+
+        tryShowModal();
+    });
+
+    target.append(btn);
+    console.log('[梦晏晨] 🐼 梦晏晨按钮已就位');
+}
 
     // 初始化
     $(document).ready(()=>{
