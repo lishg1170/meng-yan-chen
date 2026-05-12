@@ -1,8 +1,8 @@
-const script = document.createElement("script");
-script.src = `/scripts/extensions/third-party/meng-yan-chen/cleaner.js`;
-document.head.appendChild(script);
-
 (function () {
+
+    const script = document.createElement("script");
+script.src = "/scripts/extensions/third-party/meng-yan-chen/cleaner.js";
+document.head.appendChild(script);
 
     const PLUGIN_ID = "meng-yan-chen";
 
@@ -45,6 +45,8 @@ document.head.appendChild(script);
     // ======================
 
     function processMessage(msg) {
+
+        if (!window.MengCleaner) return;
 
         if (!msg?.mes && !msg?.content) return;
 
