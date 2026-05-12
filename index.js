@@ -1,5 +1,3 @@
-import { getContext } from "../../../../extensions.js";
-
 (async () => {
 
 console.log("梦晏晨插件加载成功");
@@ -87,7 +85,7 @@ alert("梦晏晨已启动");
             "[梦晏晨] 插件已启动"
         );
 
-        const context = getContext();
+        const context = window.SillyTavern?.getContext?.();
 
 console.log("[梦晏晨] context:", context);
 
