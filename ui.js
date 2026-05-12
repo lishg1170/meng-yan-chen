@@ -10,7 +10,127 @@ function openMengPanel(context) {
     // 防止重复打开
     if ($("#meng-overlay").length) return;
 
-    const html = <div id="meng-overlay" style=" position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index:999999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); ">  <div style=" width:90%; max-width:520px; max-height:85vh; overflow:auto; background:#1e1e1e; border-radius:18px; padding:18px; color:white; box-shadow:0 0 25px rgba(0,0,0,0.5); ">  <div style=" display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; ">  <div style=" font-size:1.2rem; font-weight:bold; "> 🐼 梦晏晨 · 文辞净斋 </div>  <div id="meng-close" style=" cursor:pointer; font-size:1.2rem; "> ✕ </div>  </div>  <hr>  <h3>📛 名字修正</h3>  <textarea id="meng-namefix" style=" width:100%; height:120px; margin-bottom:12px; border-radius:10px; padding:10px; background:#2b2b2b; color:white; border:none; ">${Object.entries(settings.nameFixMap) .map(([a,b]) =>${a}=${b}) .join("\n")}</textarea>  <h3>🗑️ 简单脏词</h3>  <textarea id="meng-simple" style=" width:100%; height:120px; margin-bottom:12px; border-radius:10px; padding:10px; background:#2b2b2b; color:white; border:none; ">${settings.banListSimple.join("\n")}</textarea>  <h3>⚙️ 正则清洗</h3>  <textarea id="meng-regex" style=" width:100%; height:120px; margin-bottom:18px; border-radius:10px; padding:10px; background:#2b2b2b; color:white; border:none; ">${settings.banListRegex.join("\n")}</textarea>  <button id="meng-save" style=" width:100%; padding:14px; border:none; border-radius:12px; background:#8b5cf6; color:white; font-size:1rem; font-weight:bold; cursor:pointer; "> 💾 保存设置 </button>  </div> </div> ;
+    const html = `
+<div id="meng-overlay"
+style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.65);
+z-index:999999;
+display:flex;
+align-items:center;
+justify-content:center;
+backdrop-filter:blur(6px);
+">
+
+<div
+style="
+width:90%;
+max-width:520px;
+max-height:85vh;
+overflow:auto;
+background:#1e1e1e;
+border-radius:18px;
+padding:18px;
+color:white;
+box-shadow:0 0 25px rgba(0,0,0,0.5);
+">
+
+<div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:12px;
+">
+
+<div style="
+font-size:1.2rem;
+font-weight:bold;
+">
+🐼 梦晏晨 · 文辞净斋
+</div>
+
+<div id="meng-close"
+style="
+cursor:pointer;
+font-size:1.2rem;
+">
+✕
+</div>
+
+</div>
+
+<hr>
+
+<h3>📛 名字修正</h3>
+
+<textarea
+id="meng-namefix"
+style="
+width:100%;
+height:120px;
+margin-bottom:12px;
+border-radius:10px;
+padding:10px;
+background:#2b2b2b;
+color:white;
+border:none;
+">${Object.entries(settings.nameFixMap)
+.map(([a,b]) => `${a}=${b}`)
+.join("\n")}</textarea>
+
+<h3>🗑️ 简单脏词</h3>
+
+<textarea
+id="meng-simple"
+style="
+width:100%;
+height:120px;
+margin-bottom:12px;
+border-radius:10px;
+padding:10px;
+background:#2b2b2b;
+color:white;
+border:none;
+">${settings.banListSimple.join("\n")}</textarea>
+
+<h3>⚙️ 正则清洗</h3>
+
+<textarea
+id="meng-regex"
+style="
+width:100%;
+height:120px;
+margin-bottom:18px;
+border-radius:10px;
+padding:10px;
+background:#2b2b2b;
+color:white;
+border:none;
+">${settings.banListRegex.join("\n")}</textarea>
+
+<button
+id="meng-save"
+style="
+width:100%;
+padding:14px;
+border:none;
+border-radius:12px;
+background:#8b5cf6;
+color:white;
+font-size:1rem;
+font-weight:bold;
+cursor:pointer;
+">
+💾 保存设置
+</button>
+
+</div>
+</div>
+`;
 
     $("body").append(html);
 
@@ -91,7 +211,24 @@ function injectPandaButton(context) {
     if ($("#meng-panda-btn").length)
         return;
 
-    const btn = $(<div id="meng-panda-btn" style=" cursor:pointer; padding:6px 10px; border-radius:12px; background:rgba(255,255,255,0.08); display:flex; align-items:center; gap:6px; font-size:1rem; margin-top:4px; "> <span>🐼</span> <span>梦晏晨</span> </div>);
+    const btn = $(`
+<div
+id="meng-panda-btn"
+style="
+cursor:pointer;
+padding:6px 10px;
+border-radius:12px;
+background:rgba(255,255,255,0.08);
+display:flex;
+align-items:center;
+gap:6px;
+font-size:1rem;
+margin-top:4px;
+">
+<span>🐼</span>
+<span>梦晏晨</span>
+</div>
+`);
 
     btn.on("click", () => {
         openMengPanel(context);
@@ -111,4 +248,4 @@ function injectPandaButton(context) {
 window.MengUI = {
     openMengPanel,
     injectPandaButton
-}
+};
