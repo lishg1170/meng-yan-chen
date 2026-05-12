@@ -69,7 +69,13 @@ alert("梦晏晨已启动");
                 settings
             );
 
-        msg[field] = cleaned;
+        if (cleaned !== msg[field]) {
+            console.log(
+                "[梦晏晨] 已检测到可清洗内容"
+            );
+
+            // 只改 DOM
+        }
     }
 
     $(document).ready(() => {
@@ -100,7 +106,9 @@ if (context?.eventSource) {
 
             const msg = args?.[0];
 
-            processMessage(msg);
+            const cloned = structuredClone(msg);
+
+            processMessage(cloned);
         }
    );
 
@@ -112,7 +120,9 @@ if (context?.eventSource) {
 
            const msg = args?.[0];
 
-           processMessage(msg);
+           const cloned = structuredClone(msg);
+
+           processMessage(cloned);
         }
    );
 
