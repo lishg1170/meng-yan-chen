@@ -182,3 +182,58 @@ cursor:pointer;
         });
 
     }
+
+    // ======================
+    // 注入按钮
+    // ======================
+
+    function injectPandaButton() {
+
+        const target =
+            $("#data_bank_wand_container");
+
+        if (!target.length) {
+
+            setTimeout(
+                injectPandaButton,
+                1000
+            );
+
+            return;
+        }
+
+        if ($("#meng-panda-btn").length)
+            return;
+
+        const btn = $(`
+<div
+id="meng-panda-btn"
+style="
+cursor:pointer;
+padding:6px 10px;
+border-radius:12px;
+background:rgba(255,255,255,0.08);
+display:flex;
+align-items:center;
+gap:6px;
+font-size:1rem;
+margin-top:4px;
+">
+<span>🐼</span>
+<span>梦晏晨</span>
+</div>
+`);
+
+        btn.on("click", openMengPanel);
+
+        target.append(btn);
+
+        console.log(
+            "[梦晏晨] 🐼 已成功注入"
+        );
+    }
+
+window.MengUI = {
+    openMengPanel,
+    injectPandaButton
+};
