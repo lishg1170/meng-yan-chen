@@ -71,7 +71,21 @@ alert("梦晏晨已启动");
             window.MengCleaner.cleanText(
                 msg[field],
                 settings
-            );
+
+                console.log(
+                    "[梦晏晨] 清洗前:",
+                    msg[field]
+                );
+
+                console.log(
+                    "[梦晏晨] settings:",
+                    settings
+                );
+
+                console.log(
+                    "[梦晏晨] 清洗后:",
+                    cleaned
+                );
 
         if (cleaned !== msg[field]) {
             console.log(
@@ -138,7 +152,7 @@ if (context?.eventSource) {
 
             console.log("[梦晏晨] 角色消息事件触发", args);
 
-            const messageId = String(args?.[0]);
+            const messageId = Number(args?.[0]);
 
             const chat =
                 window.SillyTavern
@@ -159,7 +173,7 @@ if (context?.eventSource) {
 
            console.log("[梦晏晨] 用户消息事件触发", args);
 
-           const messageId = String(args?.[0]);
+           const messageId = Number(args?.[0]);
 
            const chat =
                window.SillyTavern
