@@ -26,8 +26,11 @@
         ],
 
         banListRegex: [
-            "像.{0,10}(?:石头|木头|冰块)",
             "眼神中闪过一丝.{0,15}"
+        ],
+
+        contextBanList: [
+    "像一头.{0,10}野兽般"
         ],
         
         contextRules: [
