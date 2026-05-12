@@ -10,8 +10,8 @@ function cleanByContext(text, settings) {
 
             // 匹配整句
             const regex = new RegExp(
-                `([^。！？；\\n]*${rule}[^。！？；\\n]*)`,
-                "g"
+    `([^。！？；\\n]*${rule}(?:般|地|似地|一样)?[^。！？；\\n]*)`,
+    "g"
             );
 
             text = text.replace(regex, "");
