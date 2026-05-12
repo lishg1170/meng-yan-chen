@@ -15,8 +15,6 @@ alert("梦晏晨已启动");
 
     const defaultSettings = {
 
-    const defaultSettings = {
-
     nameFixMap: {
 
         "林晟": "林晨",
