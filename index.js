@@ -39,8 +39,11 @@
         ]
     };
 
-    let settings =
-        extension_settings[PLUGIN_ID] || defaultSettings;
+    let settings = Object.assign(
+    {},
+    defaultSettings,
+    extension_settings[PLUGIN_ID] || {}
+    );
 
     extension_settings[PLUGIN_ID] = settings;
 
