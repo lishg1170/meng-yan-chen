@@ -1,11 +1,14 @@
 (function () {
 
-    const script = document.createElement("script");
-script.src = "/scripts/extensions/third-party/meng-yan-chen/cleaner.js";
+    const basePath =
+"/scripts/extensions/third-party/meng-yan-chen/";
+
+const script = document.createElement("script");
+script.src = basePath + "cleaner.js";
 document.head.appendChild(script);
 
-    const uiScript = document.createElement("script");
-uiScript.src = "/scripts/extensions/third-party/meng-yan-chen/ui.js";
+const uiScript = document.createElement("script");
+uiScript.src = basePath + "ui.js";
 document.head.appendChild(uiScript);
 
     const PLUGIN_ID = "meng-yan-chen";
