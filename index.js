@@ -1,3 +1,6 @@
+console.log("梦晏晨插件加载成功");
+alert("梦晏晨已启动");
+
 (async () => {
 
     await import("./cleaner.js");
