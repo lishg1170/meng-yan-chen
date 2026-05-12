@@ -15,32 +15,50 @@ alert("梦晏晨已启动");
 
     const defaultSettings = {
 
-        nameFixMap: {
-            "林晟": "林晨",
-            "林辰": "林晨"
+    const defaultSettings = {
+
+    nameFixMap: {
+
+        "林晟": "林晨",
+        "林辰": "林晨"
+    },
+
+    simpleReplacements: [
+
+        {
+            from: "深邃",
+            to: ""
         },
 
-        banListSimple: [
-            "指尖",
-            "深邃",
-            "眸子",
-            "博弈",
-            "石像"
-        ],
+        {
+            from: "眸子",
+            to: "眼睛"
+        }
+    ],
 
-        banListRegex: [
-            "眼神中闪过一丝.{0,15}"
-        ],
+    regexRules: [
 
-        contextBanList: [
-    "像一头.{0,10}野兽般"
-        ],
-        
-        contextRules: [
-    "像.{0,15}(?:野兽|猎物|石头|木头)",
-    "眼神中闪过一丝.{0,15}",
-        ]
-    };
+        {
+            pattern: "眼神中闪过一丝.{0,15}",
+            replacement: ""
+        },
+
+        {
+            pattern: "像一头.{0,10}野兽般",
+            replacement: "凶狠地"
+        },
+
+        {
+            pattern: "审视猎物般的",
+            replacement: "压迫感十足的"
+        },
+
+        {
+            pattern: "毫不掩饰的占有欲",
+            replacement: "强烈的控制欲"
+        }
+    ]
+};
 
     let settings = Object.assign(
     {},
