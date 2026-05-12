@@ -39,9 +39,7 @@ function cleanText(text, settings) {
 
     if (!text) return text;
 
-    // 先执行上下文删句
-text = cleanByContext(text, settings);
-
+    // 1. 名字修正
     Object.entries(settings.nameFixMap)
         .forEach(([wrong, correct]) => {
 
@@ -51,6 +49,10 @@ text = cleanByContext(text, settings);
 
         });
 
+    // 2. 上下文删句（必须在简单删词前）
+    text = cleanByContext(text, settings);
+
+    // 3. 简单脏词
     settings.banListSimple.forEach(word => {
 
         text = text
@@ -59,6 +61,7 @@ text = cleanByContext(text, settings);
 
     });
 
+    // 4. 正则清洗
     settings.banListRegex.forEach(pattern => {
 
         try {
