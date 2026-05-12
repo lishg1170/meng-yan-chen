@@ -1,138 +1,373 @@
-(function() {
-    const PLUGIN_ID = 'meng-yan-chen';
+(function () {
+
+    const PLUGIN_ID = "meng-yan-chen";
+
     const extensions = window.SillyTavern?.extensions || {};
     const extension_settings = extensions.extension_settings || {};
-    const saveSettingsDebounced = extensions.saveSettingsDebounced || (()=>{});
+    const saveSettingsDebounced =
+        extensions.saveSettingsDebounced || (() => { });
+
+    // ======================
+    // 默认设置
+    // ======================
 
     const defaultSettings = {
-        nameFixMap: { '林晟':'林晨','林辰':'林晨' },
-        banListSimple: ['指尖','深邃','眸子','博弈','石像'],
-        banListRegex: ['像.{0,10}(?:石头|木头|冰块)','眼神中闪过一丝.{0,15}']
+        nameFixMap: {
+            "林晟": "林晨",
+            "林辰": "林晨"
+        },
+
+        banListSimple: [
+            "指尖",
+            "深邃",
+            "眸子",
+            "博弈",
+            "石像"
+        ],
+
+        banListRegex: [
+            "像.{0,10}(?:石头|木头|冰块)",
+            "眼神中闪过一丝.{0,15}"
+        ]
     };
 
-    let settings = extension_settings[PLUGIN_ID] || defaultSettings;
-    if (!extension_settings[PLUGIN_ID]) extension_settings[PLUGIN_ID] = settings;
+    let settings =
+        extension_settings[PLUGIN_ID] || defaultSettings;
 
+    extension_settings[PLUGIN_ID] = settings;
+
+    // ======================
     // 文本清洗
+    // ======================
+
     function cleanText(text) {
+
         if (!text) return text;
-        Object.entries(settings.nameFixMap).forEach(([wrong,correct])=>{
-            text = text.split(wrong).join(correct);
+
+        Object.entries(settings.nameFixMap)
+            .forEach(([wrong, correct]) => {
+
+                text = text
+                    .split(wrong)
+                    .join(correct);
+
+            });
+
+        settings.banListSimple.forEach(word => {
+
+            text = text
+                .split(word)
+                .join("");
+
         });
-        settings.banListSimple.forEach(word=>{ text = text.split(word).join(''); });
-        settings.banListRegex.forEach(pattern=>{
-            try{text = text.replace(new RegExp(pattern,'g'),'');}catch(e){}
+
+        settings.banListRegex.forEach(pattern => {
+
+            try {
+
+                text = text.replace(
+                    new RegExp(pattern, "g"),
+                    ""
+                );
+
+            } catch (e) { }
+
         });
+
         return text;
     }
 
-    function processMessage(msg){
-        if(msg?.content){
-            const cleaned = cleanText(msg.content);
-            if(msg.content!==cleaned){
-                msg.content = cleaned;
-                console.log('[梦晏晨] ✧ 已清理文字');
-            }
-        }
+    // ======================
+    // 处理消息
+    // ======================
+
+    function processMessage(msg) {
+
+        if (!msg?.mes && !msg?.content) return;
+
+        const field = msg.mes ? "mes" : "content";
+
+        const cleaned =
+            cleanText(msg[field]);
+
+        msg[field] = cleaned;
     }
 
-    // 创建设置面板
-    function createSettingsPanel(){
-        const panel = $(`
-        <div style="padding:16px; max-width:400px; color: var(--SmartThemeTextColor); font-family: var(--mainFontFamily);">
-            <h3>✧ 梦晏晨 · 文辞净斋</h3>
-            <div id="meng-name-list"></div>
-            <h4>简单脏词（一行一个）</h4>
-            <textarea id="meng-simple" rows="5">${settings.banListSimple.join('\n')}</textarea>
-            <h4>复杂正则（一行一条）</h4>
-            <textarea id="meng-regex" rows="5">${settings.banListRegex.join('\n')}</textarea>
-            <button id="meng-save">💾 保存设置</button>
-            <div id="meng-status" style="margin-top:8px;opacity:0.8;"></div>
-        </div>
-        `);
+    // ======================
+    // 创建真正弹窗
+    // ======================
 
-        function loadUI(){
-            const nameList = panel.find('#meng-name-list');
-            nameList.empty();
-            Object.entries(settings.nameFixMap).forEach(([wrong,correct])=>{
-                const row = $(`
-                <div class="meng-row" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-                    <input class="meng-wrong" value="${wrong}" style="flex:1 1 40%;">
-                    <span>➜</span>
-                    <input class="meng-correct" value="${correct}" style="flex:1 1 40%;">
-                    <button class="meng-del-name">✕</button>
-                </div>`);
-                nameList.append(row);
-                row.find('.meng-del-name').on('click',()=>row.remove());
-            });
-        }
-        setTimeout(loadUI,80);
+    function openMengPanel() {
 
-        panel.find('#meng-save').on('click',()=>{
-            const nameMap={};
-            panel.find('#meng-name-list .meng-row').each(function(){
-                const wrong=$(this).find('.meng-wrong').val()?.trim();
-                const correct=$(this).find('.meng-correct').val()?.trim();
-                if(wrong && correct) nameMap[wrong]=correct;
-            });
-            settings.nameFixMap=nameMap;
-            settings.banListSimple=panel.find('#meng-simple').val().split('\n').map(s=>s.trim()).filter(s=>s);
-            settings.banListRegex=panel.find('#meng-regex').val().split('\n').map(s=>s.trim()).filter(s=>s);
-            extension_settings[PLUGIN_ID]=settings;
-            saveSettingsDebounced();
-            panel.find('#meng-status').text('✧ 已保存！').fadeIn(200).delay(2000).fadeOut(200);
+        // 防止重复打开
+        if ($("#meng-overlay").length) return;
+
+        const html = `
+<div id="meng-overlay"
+style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.65);
+z-index:999999;
+display:flex;
+align-items:center;
+justify-content:center;
+backdrop-filter:blur(6px);
+">
+
+<div
+style="
+width:90%;
+max-width:520px;
+max-height:85vh;
+overflow:auto;
+background:#1e1e1e;
+border-radius:18px;
+padding:18px;
+color:white;
+box-shadow:0 0 25px rgba(0,0,0,0.5);
+">
+
+<div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:12px;
+">
+
+<div style="
+font-size:1.2rem;
+font-weight:bold;
+">
+🐼 梦晏晨 · 文辞净斋
+</div>
+
+<div id="meng-close"
+style="
+cursor:pointer;
+font-size:1.2rem;
+">
+✕
+</div>
+
+</div>
+
+<hr>
+
+<h3>📛 名字修正</h3>
+
+<textarea
+id="meng-namefix"
+style="
+width:100%;
+height:120px;
+margin-bottom:12px;
+border-radius:10px;
+padding:10px;
+background:#2b2b2b;
+color:white;
+border:none;
+">${Object.entries(settings.nameFixMap)
+.map(([a,b])=>`${a}=${b}`)
+.join("\n")}</textarea>
+
+<h3>🗑️ 简单脏词</h3>
+
+<textarea
+id="meng-simple"
+style="
+width:100%;
+height:120px;
+margin-bottom:12px;
+border-radius:10px;
+padding:10px;
+background:#2b2b2b;
+color:white;
+border:none;
+">${settings.banListSimple.join("\n")}</textarea>
+
+<h3>⚙️ 正则清洗</h3>
+
+<textarea
+id="meng-regex"
+style="
+width:100%;
+height:120px;
+margin-bottom:18px;
+border-radius:10px;
+padding:10px;
+background:#2b2b2b;
+color:white;
+border:none;
+">${settings.banListRegex.join("\n")}</textarea>
+
+<button
+id="meng-save"
+style="
+width:100%;
+padding:14px;
+border:none;
+border-radius:12px;
+background:#8b5cf6;
+color:white;
+font-size:1rem;
+font-weight:bold;
+cursor:pointer;
+">
+💾 保存设置
+</button>
+
+</div>
+</div>
+`;
+
+        $("body").append(html);
+
+        // 关闭
+        $("#meng-close").on("click", () => {
+            $("#meng-overlay").remove();
         });
 
-        return panel;
+        // 保存
+        $("#meng-save").on("click", () => {
+
+            // 名字修正
+            const map = {};
+
+            $("#meng-namefix")
+                .val()
+                .split("\n")
+                .forEach(line => {
+
+                    const parts = line.split("=");
+
+                    if (parts.length >= 2) {
+
+                        map[
+                            parts[0].trim()
+                        ] = parts[1].trim();
+
+                    }
+
+                });
+
+            settings.nameFixMap = map;
+
+            // 简单脏词
+            settings.banListSimple =
+                $("#meng-simple")
+                    .val()
+                    .split("\n")
+                    .map(v => v.trim())
+                    .filter(Boolean);
+
+            // 正则
+            settings.banListRegex =
+                $("#meng-regex")
+                    .val()
+                    .split("\n")
+                    .map(v => v.trim())
+                    .filter(Boolean);
+
+            extension_settings[PLUGIN_ID] =
+                settings;
+
+            saveSettingsDebounced();
+
+            alert("✧ 梦晏晨设置已保存");
+        });
+
     }
 
-    // 注入小熊猫按钮（带文字“梦晏晨”）
-   function injectPandaButton(){
-    const target = $('#data_bank_wand_container');
-    if(!target.length) return setTimeout(injectPandaButton,300);
-    if($('#meng-panda-btn').length) return;
+    // ======================
+    // 注入按钮
+    // ======================
 
-    const btn=$(`
-        <div id="meng-panda-btn" title="梦晏晨 · 文辞净斋" 
-            style="cursor:pointer; font-size:1.2rem; display:flex; align-items:center; gap:4px;">
-            <span>🐼</span><span>梦晏晨</span>
-        </div>
-    `);
+    function injectPandaButton() {
 
-    btn.on('click',()=>{
-        const panel=createSettingsPanel();
+        const target =
+            $("#data_bank_wand_container");
 
-        // 等待 showModal 就绪再执行
-        function tryShowModal() {
-            if(typeof showModal==='function'){
-                showModal(panel[0],{title:'梦晏晨 · 设置', width:'600px', height:'auto'});
-            } else {
-                setTimeout(tryShowModal,100);
-            }
+        if (!target.length) {
+
+            setTimeout(
+                injectPandaButton,
+                1000
+            );
+
+            return;
         }
 
-        tryShowModal();
-    });
+        if ($("#meng-panda-btn").length)
+            return;
 
-    target.append(btn);
-    console.log('[梦晏晨] 🐼 梦晏晨按钮已就位');
-}
+        const btn = $(`
+<div
+id="meng-panda-btn"
+style="
+cursor:pointer;
+padding:6px 10px;
+border-radius:12px;
+background:rgba(255,255,255,0.08);
+display:flex;
+align-items:center;
+gap:6px;
+font-size:1rem;
+margin-top:4px;
+">
+<span>🐼</span>
+<span>梦晏晨</span>
+</div>
+`);
 
+        btn.on("click", openMengPanel);
+
+        target.append(btn);
+
+        console.log(
+            "[梦晏晨] 🐼 已成功注入"
+        );
+    }
+
+    // ======================
     // 初始化
-    $(document).ready(()=>{
+    // ======================
+
+    $(document).ready(() => {
+
         injectPandaButton();
-        try{
-            const eventSource=extensions.eventSource;
-            const event_types=extensions.event_types;
-            eventSource?.on(event_types.MESSAGE_RECEIVED,processMessage);
-            eventSource?.on(event_types.MESSAGE_UPDATED,processMessage);
-            eventSource?.on(event_types.CHAT_CHANGED,()=>{
-                const context=extensions.getContext?.();
-                context?.chat?.forEach(processMessage);
-            });
-        }catch(e){
-            console.error('[梦晏晨] 事件绑定失败',e);
+
+        try {
+
+            const eventSource =
+                extensions.eventSource;
+
+            const event_types =
+                extensions.event_types;
+
+            eventSource?.on(
+                event_types.MESSAGE_RECEIVED,
+                processMessage
+            );
+
+            eventSource?.on(
+                event_types.MESSAGE_UPDATED,
+                processMessage
+            );
+
+        } catch (e) {
+
+            console.error(e);
+
         }
-        console.log('[梦晏晨] ✧ 插件已就绪');
+
+        console.log(
+            "[梦晏晨] 插件已启动"
+        );
+
     });
+
 })();
