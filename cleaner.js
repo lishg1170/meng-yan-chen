@@ -1,76 +1,59 @@
-function cleanText(text, settings) {
+function processMessage(msg, messageId){
 
     console.log(
-    "[梦晏晨] cleanText执行:",
-    text
+        "[梦晏晨] processMessage触发",
+        msg
     );
 
-    if (!text) return text;
+    if (!window.MengCleaner) return;
 
-    // ======================
-    // 1. 上下文整句删除（最先）
-    // ======================
+    if (!msg?.mes && !msg?.content) return;
 
-    text = cleanByContext(text, settings);
+    if (msg._meng_cleaned) return;
 
-    // ======================
-    // 2. 普通正则
-    // ======================
+    const field = msg.mes ? "mes" : "content";
 
-    settings.banListRegex.forEach(pattern => {
+    const cleaned =
+        window.MengCleaner.cleanText(
+            msg[field],
+            settings
+        );
 
-        try {
+    if (cleaned !== msg[field]) {
 
-            text = text.replace(
-                new RegExp(pattern, "g"),
-                ""
-            );
+        console.log(
+            "[梦晏晨] 已检测到可清洗内容"
+        );
 
-        } catch (e) {
+        msg[field] = cleaned;
 
-            console.warn(
-                "[梦晏晨] 正则错误:",
-                pattern
-            );
+        const chat =
+            window.SillyTavern
+                ?.getContext?.()
+                ?.chat;
 
+        if (chat?.[messageId]) {
+
+            chat[messageId][field] =
+                cleaned;
+
+            chat[messageId]._meng_cleaned =
+                true;
         }
 
-    });
+        const mesBlock =
+            document.querySelector(
+                `#chat .mes[mesid="${messageId}"] .mes_text`
+            );
 
-    // ======================
-    // 3. 简单脏词
-    // ======================
+        if (mesBlock) {
 
-    settings.banListSimple.forEach(word => {
+            mesBlock.textContent =
+                cleaned;
 
-        text = text
-            .split(word)
-            .join("");
-
-    });
-
-    // ======================
-    // 4. 名字修正
-    // ======================
-
-    Object.entries(settings.nameFixMap)
-        .forEach(([wrong, correct]) => {
-
-            text = text
-                .split(wrong)
-                .join(correct);
-
-        });
-
-    // ======================
-    // 5. 清理残留
-    // ======================
-
-    text = text
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/([。！？])\1+/g, "$1")
-        .replace(/，{2,}/g, "，")
-        .trim();
-
-    return text;
+            console.log(
+                "[梦晏晨] DOM已更新"
+            );
+        }
+    }
 }
