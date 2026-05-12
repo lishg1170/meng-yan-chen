@@ -1,6 +1,46 @@
+function cleanByContext(text, settings) {
+
+    if (!settings.contextRules) {
+        return text;
+    }
+
+    settings.contextRules.forEach(rule => {
+
+        try {
+
+            // 匹配整句
+            const regex = new RegExp(
+                `([^。！？；\\n]*${rule}[^。！？；\\n]*)`,
+                "g"
+            );
+
+            text = text.replace(regex, "");
+
+        } catch (e) {
+
+            console.warn(
+                "[梦晏晨] 上下文规则错误:",
+                rule
+            );
+
+        }
+
+    });
+
+    // 清理多余空行
+    text = text
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/[，。]{2,}/g, "。");
+
+    return text;
+}
+
 function cleanText(text, settings) {
 
     if (!text) return text;
+
+    // 先执行上下文删句
+text = cleanByContext(text, settings);
 
     Object.entries(settings.nameFixMap)
         .forEach(([wrong, correct]) => {
@@ -43,5 +83,6 @@ function cleanText(text, settings) {
 }
 
 window.MengCleaner = {
-    cleanText
+    cleanText,
+    cleanByContext
 };
