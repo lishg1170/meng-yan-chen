@@ -157,37 +157,36 @@ $("#meng-regex").val(
         // 名字修正
         const map = {};
 
-       ($("#meng-namefix").val() || "")
-            .split("\n")
-            .forEach(line => {
+       settings.simpleReplacements =
+           ($("#meng-simple").val() || "")
+               .split("\n")
+               .map(v => {
 
-                const parts = line.split("=");
+                   const parts = v.split("=>");
 
-                if (parts.length >= 2) {
+                   return {
+                       from: parts[0]?.trim() || "",
+                       to: parts[1]?.trim() || ""
+                   };
 
-                    map[
-                        parts[0].trim()
-                    ] = parts[1].trim();
-
-                }
-
-            });
-
-        settings.nameFixMap = map;
+                })
+                .filter(v => v.from && v.to);
 
         // 简单脏词
         settings.simpleReplacements =
-           ($("#meng-simple").val() || "")
-                .split("\n")
-                .map(v => v.trim())
-                .filter(Boolean);
+           $("#meng-simple").val(
+                (settings.simpleReplacements || [])
+                    .map(item => `${item.from}=>${item.to}`)
+                    .join("\n")
+           );
 
         // 正则
         settings.regexRules = 
-           ($("#meng-regex").val() || "")
-                .split("\n")
-                .map(v => v.trim())
-                .filter(Boolean);
+           $("#meng-regex").val(
+                (settings.regexRules || [])
+                    .map(item => `${item.pattern}=>${item.replace}`)
+                    .join("\n")
+           );
 
         extension_settings[PLUGIN_ID] =
             settings;
