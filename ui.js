@@ -78,9 +78,7 @@ padding:10px;
 background:#2b2b2b;
 color:white;
 border:none;
-">${Object.entries(settings.nameFixMap)
-.map(([a,b]) => `${a}=${b}`)
-.join("\n")}</textarea>
+"></textarea>
 
 <h3>🗑️ 简单脏词</h3>
 
@@ -95,7 +93,7 @@ padding:10px;
 background:#2b2b2b;
 color:white;
 border:none;
-">${settings.banListSimple.join("\n")}</textarea>
+"></textarea>
 
 <h3>⚙️ 正则清洗</h3>
 
@@ -110,7 +108,7 @@ padding:10px;
 background:#2b2b2b;
 color:white;
 border:none;
-">${settings.banListRegex.join("\n")}</textarea>
+"></textarea>
 
 <button
 id="meng-save"
@@ -134,6 +132,20 @@ cursor:pointer;
 
     $("body").append(html);
 
+    $("#meng-namefix").val(
+    Object.entries(settings.nameFixMap || {})
+        .map(([k, v]) => `${k}=${v}`)
+        .join("\n")
+);
+
+$("#meng-simple").val(
+    (settings.simpleReplacements || []).join("\n")
+);
+
+$("#meng-regex").val(
+    (settings.regexRules || []).join("\n")
+);
+
     // 关闭
     $("#meng-close").on("click", () => {
         $("#meng-overlay").remove();
@@ -146,7 +158,7 @@ cursor:pointer;
         const map = {};
 
         $("#meng-namefix")
-            .val()
+       ($("#meng-namefix").val() || "")
             .split("\n")
             .forEach(line => {
 
@@ -165,17 +177,17 @@ cursor:pointer;
         settings.nameFixMap = map;
 
         // 简单脏词
-        settings.banListSimple =
+        settings.simpleReplacements =
             $("#meng-simple")
-                .val()
+           ($("#meng-simple").val() || "")
                 .split("\n")
                 .map(v => v.trim())
                 .filter(Boolean);
 
         // 正则
-        settings.banListRegex =
+        settings.regexRules = 
             $("#meng-regex")
-                .val()
+           ($("#meng-regex").val() || "")
                 .split("\n")
                 .map(v => v.trim())
                 .filter(Boolean);
@@ -231,7 +243,20 @@ margin-top:4px;
 `);
 
     btn.on("click", () => {
-        openMengPanel(context);
+
+        try {
+
+            openMengPanel(context);
+
+        } catch(err) {
+
+            console.error(
+                "[梦晏晨] UI打开失败",
+                err
+            );
+
+        }
+
     });
 
     target.append(btn);
