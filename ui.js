@@ -1,5 +1,7 @@
 function openMengPanel(context) {
 
+    console.log("梦晏晨 UI VERSION = 777");
+
     const {
         settings,
         extension_settings,
