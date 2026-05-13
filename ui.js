@@ -180,6 +180,11 @@ $("#meng-regex").val(
                     .join("\n")
            );
 
+           console.log(
+               "[梦晏晨] simple ui render",
+               settings.simpleReplacements
+           );
+        
         // 正则
         settings.regexRules = 
            $("#meng-regex").val(
