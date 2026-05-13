@@ -153,80 +153,50 @@ $("#meng-regex").val(
 );
 
     // 关闭
-    $("#meng-close").on("click", () => {
-        $("#meng-overlay").remove();
-    });
+    $("#meng-close").off("click").on("click", () => {
+    $("#meng-overlay").remove();
+});
 
-    // 保存
-    $("#meng-save").on("click", () => {
+$("#meng-save").off("click").on("click", () => {
 
     // 名字修正
-    // 保存名字修正
-    const nameFixArr =
-        ($("#meng-namefix").val() || "")
-            .split("\n")
-            .map(line => {
-                const parts = line.split("=>");
-                return {
-                    from: parts[0]?.trim() || "",
-                    to: parts[1]?.trim() || ""
-                };
-            })
-            .filter(item => item.from && item.to);
+    const nameFixArr = ($("#meng-namefix").val() || "")
+        .split("\n")
+        .map(line => {
+            const parts = line.split("=");
+            return { from: parts[0]?.trim() || "", to: parts[1]?.trim() || "" };
+        })
+        .filter(item => item.from && item.to);
 
     settings.nameFixMap = {};
-    nameFixArr.forEach(item => {
-        settings.nameFixMap[item.from] = item.to;
-    });
+    nameFixArr.forEach(item => settings.nameFixMap[item.from] = item.to);
+    $("#meng-namefix").val(nameFixArr.map(item => `${item.from}=${item.to}`).join("\n"));
 
-    // 更新 UI 显示
-    $("#meng-namefix").val(
-        nameFixArr.map(item => `${item.from}=${item.to}`).join("\n")
-    );
-        // 简单脏词
+    // 简单替换
+    const simpleArr = ($("#meng-simple").val() || "")
+        .split("\n")
+        .map(line => {
+            const parts = line.split("=>");
+            return { from: parts[0]?.trim() || "", to: parts[1]?.trim() || "" };
+        })
+        .filter(item => item.from && item.to);
 
-       // 保存简单替换
-       const simpleArr =
-           ($("#meng-simple").val() || "")
-               .split("\n")
-               .map(line => {
-                   const parts = line.split("=>");
-                   return {
-                       from: parts[0]?.trim() || "",
-                       to: parts[1]?.trim() || ""
-                   };
-               })
-               .filter(item => item.from && item.to);
+    settings.simpleReplacements = simpleArr;
+    $("#meng-simple").val(simpleArr.map(item => `${item.from}=>${item.to}`).join("\n"));
 
-       settings.simpleReplacements = simpleArr;
-
-       // 更新 UI 显示格式
-       $("#meng-simple").val(
-           simpleArr.map(item => `${item.from}=>${item.to}`).join("\n")
-       );
-
-       // 保存正则
-       const regexArr =
-           ($("#meng-regex").val() || "")
-               .split("\n")
-               .map(line => {
-                   const parts = line.split("=>");
-                   return {
-                       pattern: parts[0]?.trim() || "",
-                       replace: parts[1]?.trim() || ""
-                };
-            })
-            .filter(item => item.pattern);
+    // 正则
+    const regexArr = ($("#meng-regex").val() || "")
+        .split("\n")
+        .map(line => {
+            const parts = line.split("=>");
+            return { pattern: parts[0]?.trim() || "", replace: parts[1]?.trim() || "" };
+        })
+        .filter(item => item.pattern && item.replace);
 
     settings.regexRules = regexArr;
-
-        // 更新 UI 显示格式
-       $("#meng-regex").val(
-           regexArr.map(item => `${item.pattern}=>${item.replace}`).join("\n")
-       );
+    $("#meng-regex").val(regexArr.map(item => `${item.pattern}=>${item.replace}`).join("\n"));
 
     saveSettingsDebounced();
-
     alert("✧ 梦晏晨设置已保存");
 });
     });
