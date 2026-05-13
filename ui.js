@@ -166,7 +166,7 @@ $("#meng-regex").val(
         ($("#meng-namefix").val() || "")
             .split("\n")
             .map(line => {
-                const parts = line.split("=");
+                const parts = line.split("=>");
                 return {
                     from: parts[0]?.trim() || "",
                     to: parts[1]?.trim() || ""
