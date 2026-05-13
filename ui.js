@@ -176,7 +176,7 @@ $("#meng-regex").val(
         settings.simpleReplacements =
            $("#meng-simple").val(
                 (settings.simpleReplacements || [])
-                    .map(item => `${item.from}=>${item.to}`)
+                    .map(item => `${v.from}=>${v.to}`)
                     .join("\n")
            );
 
@@ -184,7 +184,7 @@ $("#meng-regex").val(
         settings.regexRules = 
            $("#meng-regex").val(
                 (settings.regexRules || [])
-                    .map(item => `${item.pattern}=>${item.replace}`)
+                    .map(item => `${v.pattern}=>${v.replace}`)
                     .join("\n")
            );
 
