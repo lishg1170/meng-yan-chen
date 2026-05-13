@@ -157,12 +157,14 @@ $("#meng-regex").val(
     $("#meng-overlay").remove();
 });
 
+    
+
+$("#meng-save").off("click").on("click", () => {
+    
     regexArr.forEach(item => {
       try { new RegExp(item.pattern); } 
       catch(e) { console.warn("正则有误:", item.pattern); }
     });
-
-$("#meng-save").off("click").on("click", () => {
 
     // 名字修正
     const nameFixArr = ($("#meng-namefix").val() || "")
@@ -198,7 +200,8 @@ $("#meng-save").off("click").on("click", () => {
             const [pattern, replace] = line.split("=>").map(s => s.trim());
             return { pattern, replace: replace || "" };
         });
-
+        .filter(item => item.patter && item.replace);
+        
    settings.regexRules = regexArr;
 
    // 更新 UI
