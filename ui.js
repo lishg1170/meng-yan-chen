@@ -1,4 +1,4 @@
-function openMengPanel(context) {
+tunction openMengPanel(context) {
 
     console.log("梦晏晨 UI VERSION = 777");
 
@@ -187,13 +187,12 @@ $("#meng-save").off("click").on("click", () => {
     // 正则
     const regexArr = ($("#meng-regex").val() || "")
         .split("\n")
+        .map(line => line.trim())
+        .filter(line => line && line.includes("=>"))
         .map(line => {
-            const parts = line.split("=>");
-            const pattern = (parts[0] || "").trim();
-            const replace = (parts[1] || "").trim() || "";
-            return { pattern, replace };
-        })
-        .filter(item => item.pattern);
+            const [pattern, replace] = line.split("=>").map(s => s.trim());
+            return { pattern, replace: replace || "" };
+        });
 
    settings.regexRules = regexArr;
 
