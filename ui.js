@@ -157,6 +157,11 @@ $("#meng-regex").val(
     $("#meng-overlay").remove();
 });
 
+    regexArr.forEach(item => {
+      try { new RegExp(item.pattern); } 
+      catch(e) { console.warn("正则有误:", item.pattern); }
+    });
+
 $("#meng-save").off("click").on("click", () => {
 
     // 名字修正
