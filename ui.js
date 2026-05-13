@@ -189,12 +189,16 @@ $("#meng-save").off("click").on("click", () => {
         .split("\n")
         .map(line => {
             const parts = line.split("=>");
-            return { pattern: parts[0]?.trim() || "", replace: parts[1]?.trim() || "" };
+            const pattern = (parts[0] || "").trim();
+            const replace = (parts[1] || "").trim() || "";
+            return { pattern, replace };
         })
-        .filter(item => item.pattern && item.replace);
+        .filter(item => item.pattern);
 
-    settings.regexRules = regexArr;
-    $("#meng-regex").val(regexArr.map(item => `${item.pattern}=>${item.replace}`).join("\n"));
+   settings.regexRules = regexArr;
+
+   // 更新 UI
+   $("#meng-regex").val(regexArr.map(item => `${item.pattern}=>${item.replace}`).join("\n"));
 
     saveSettingsDebounced();
     alert("✧ 梦晏晨设置已保存");
