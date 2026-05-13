@@ -199,7 +199,6 @@ $("#meng-save").off("click").on("click", () => {
     saveSettingsDebounced();
     alert("✧ 梦晏晨设置已保存");
 });
-    });
 }
 
 // ======================
