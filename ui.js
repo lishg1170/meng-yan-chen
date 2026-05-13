@@ -141,11 +141,15 @@ cursor:pointer;
 );
 
 $("#meng-simple").val(
-    (settings.simpleReplacements || []).join("\n")
+    (settings.simpleReplacements || [])
+        .map(item => `${item.from}=>${item.to}`)
+        .join("\n")
 );
 
 $("#meng-regex").val(
-    (settings.regexRules || []).join("\n")
+    (settings.regexRules || [])
+        .map(item => `${item.pattern}=>${item.replace}`)
+        .join("\n")
 );
 
     // 关闭
@@ -159,7 +163,7 @@ $("#meng-regex").val(
         // 名字修正
         const map = {};
 
-       settings.simpleReplacements =
+        settings.simpleReplacements =
            ($("#meng-simple").val() || "")
                .split("\n")
                .map(v => {
@@ -176,27 +180,35 @@ $("#meng-regex").val(
 
         // 简单脏词
         settings.simpleReplacements =
-           $("#meng-simple").val(
-                (settings.simpleReplacements || [])
-                    .map(item => `${v.from}=>${v.to}`)
-                    .join("\n")
-           );
+            ($("#meng-simple").val() || "")
+                .split("\n")
+                .map(v => {
 
-           console.log(
-               "[梦晏晨] simple ui render",
-               settings.simpleReplacements
-           );
-        
-        // 正则
-        settings.regexRules = 
-           $("#meng-regex").val(
-                (settings.regexRules || [])
-                    .map(item => `${v.pattern}=>${v.replace}`)
-                    .join("\n")
-           );
+                    const parts = v.split("=>");
 
-        extension_settings[PLUGIN_ID] =
-            settings;
+                    return {
+                        from: parts[0]?.trim() || "",
+                        to: parts[1]?.trim() || ""
+                    };
+
+                })
+                .filter(v => v.from && v.to);
+
+          // 正则
+          settings.regexRules =
+              ($("#meng-regex").val() || "")
+                   .split("\n")
+                   .map(v => {
+    
+                       const parts = v.split("=>");
+
+                       return {
+                           pattern: parts[0]?.trim() || "",
+                           replace: parts[1]?.trim() || ""
+                      };
+
+                 })
+                 .filter(v => v.pattern);
 
         saveSettingsDebounced();
 
