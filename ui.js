@@ -199,8 +199,8 @@ $("#meng-save").off("click").on("click", () => {
         .map(line => {
             const [pattern, replace] = line.split("=>").map(s => s.trim());
             return { pattern, replace: replace || "" };
-        });
-        .filter(item => item.pattern && item.replace);
+        })
+        .filter (item => item.pattern && item.replace);
         
    settings.regexRules = regexArr;
 
