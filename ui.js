@@ -157,7 +157,6 @@ $("#meng-regex").val(
         // 名字修正
         const map = {};
 
-        $("#meng-namefix")
        ($("#meng-namefix").val() || "")
             .split("\n")
             .forEach(line => {
@@ -178,7 +177,6 @@ $("#meng-regex").val(
 
         // 简单脏词
         settings.simpleReplacements =
-            $("#meng-simple")
            ($("#meng-simple").val() || "")
                 .split("\n")
                 .map(v => v.trim())
@@ -186,7 +184,6 @@ $("#meng-regex").val(
 
         // 正则
         settings.regexRules = 
-            $("#meng-regex")
            ($("#meng-regex").val() || "")
                 .split("\n")
                 .map(v => v.trim())
