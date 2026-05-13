@@ -160,59 +160,75 @@ $("#meng-regex").val(
     // 保存
     $("#meng-save").on("click", () => {
 
-        // 名字修正
-        const map = {};
+    // 名字修正
+    // 保存名字修正
+    const nameFixArr =
+        ($("#meng-namefix").val() || "")
+            .split("\n")
+            .map(line => {
+                const parts = line.split("=");
+                return {
+                    from: parts[0]?.trim() || "",
+                    to: parts[1]?.trim() || ""
+                };
+            })
+            .filter(item => item.from && item.to);
 
-        settings.simpleReplacements =
+    settings.nameFixMap = {};
+    nameFixArr.forEach(item => {
+        settings.nameFixMap[item.from] = item.to;
+    });
+
+    // 更新 UI 显示
+    $("#meng-namefix").val(
+        nameFixArr.map(item => `${item.from}=${item.to}`).join("\n")
+    );
+        // 简单脏词
+
+       // 保存简单替换
+       const simpleArr =
            ($("#meng-simple").val() || "")
                .split("\n")
-               .map(v => {
-
-                   const parts = v.split("=>");
-
+               .map(line => {
+                   const parts = line.split("=>");
                    return {
                        from: parts[0]?.trim() || "",
                        to: parts[1]?.trim() || ""
                    };
+               })
+               .filter(item => item.from && item.to);
 
-                })
-                .filter(v => v.from && v.to);
+       settings.simpleReplacements = simpleArr;
 
-        // 简单脏词
-        settings.simpleReplacements =
-            ($("#meng-simple").val() || "")
-                .split("\n")
-                .map(v => {
+       // 更新 UI 显示格式
+       $("#meng-simple").val(
+           simpleArr.map(item => `${item.from}=>${item.to}`).join("\n")
+       );
 
-                    const parts = v.split("=>");
+       // 保存正则
+       const regexArr =
+           ($("#meng-regex").val() || "")
+               .split("\n")
+               .map(line => {
+                   const parts = line.split("=>");
+                   return {
+                       pattern: parts[0]?.trim() || "",
+                       replace: parts[1]?.trim() || ""
+                };
+            })
+            .filter(item => item.pattern);
 
-                    return {
-                        from: parts[0]?.trim() || "",
-                        to: parts[1]?.trim() || ""
-                    };
+    settings.regexRules = regexArr;
 
-                })
-                .filter(v => v.from && v.to);
+        // 更新 UI 显示格式
+       $("#meng-regex").val(
+           regexArr.map(item => `${item.pattern}=>${item.replace}`).join("\n")
+       );
 
-          // 正则
-          settings.regexRules =
-              ($("#meng-regex").val() || "")
-                   .split("\n")
-                   .map(v => {
-    
-                       const parts = v.split("=>");
+    saveSettingsDebounced();
 
-                       return {
-                           pattern: parts[0]?.trim() || "",
-                           replace: parts[1]?.trim() || ""
-                      };
-
-                 })
-                 .filter(v => v.pattern);
-
-        saveSettingsDebounced();
-
-        alert("✧ 梦晏晨设置已保存");
+    alert("✧ 梦晏晨设置已保存");
+});
     });
 }
 
