@@ -18,19 +18,7 @@ window.MengCleaner = {
         }
 
         //
-        // 2. 简单替换
-        //
-        for (const rule of settings.simpleReplacements || []) {
-
-            cleaned =
-                cleaned.replaceAll(
-                    rule.from,
-                    rule.to
-                );
-        }
-
-        //
-        // 3. regex规则
+        // 2. regex规则
         //
         for (const rule of settings.regexRules || []) {
 
@@ -56,6 +44,18 @@ window.MengCleaner = {
                     err
                 );
             }
+        }
+        
+        //
+        // 3. 简单替换
+        //
+        for (const rule of settings.simpleReplacements || []) {
+
+            cleaned =
+                cleaned.replaceAll(
+                    rule.from,
+                    rule.to
+                );
         }
 
         //
