@@ -1,4 +1,4 @@
-tunction openMengPanel(context) {
+function openMengPanel(context) {
 
     console.log("梦晏晨 UI VERSION = 777");
 
@@ -160,11 +160,6 @@ $("#meng-regex").val(
     
 
 $("#meng-save").off("click").on("click", () => {
-    
-    regexArr.forEach(item => {
-      try { new RegExp(item.pattern); } 
-      catch(e) { console.warn("正则有误:", item.pattern); }
-    });
 
     // 名字修正
     const nameFixArr = ($("#meng-namefix").val() || "")
@@ -176,7 +171,9 @@ $("#meng-save").off("click").on("click", () => {
         .filter(item => item.from && item.to);
 
     settings.nameFixMap = {};
-    nameFixArr.forEach(item => settings.nameFixMap[item.from] = item.to);
+    nameFixArr.forEach(item => { 
+        settings.nameFixMap[item.from] = item.to;
+    });
     $("#meng-namefix").val(nameFixArr.map(item => `${item.from}=${item.to}`).join("\n"));
 
     // 简单替换
@@ -202,6 +199,16 @@ $("#meng-save").off("click").on("click", () => {
         })
         .filter (item => item.pattern && item.replace);
         
+        // 检查正则是否合法
+
+    regexArr.forEach(item => {
+        try {
+            new RegExp(item.pattern);
+        } catch (e) {
+            console.warn("正则有误:", item.pattern);
+        }
+    });
+   
    settings.regexRules = regexArr;
 
    // 更新 UI
