@@ -45,7 +45,7 @@ window.MengCleaner = {
                 cleaned =
                     cleaned.replace(
                         regex,
-                        rule.replacement || ""
+                        rule.replace || ""
                     );
 
             } catch (err) {
