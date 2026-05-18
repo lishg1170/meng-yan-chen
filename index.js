@@ -24,7 +24,7 @@ alert("梦晏晨已启动");
     simpleReplacements: [
 
         {
-            from: "深邃",
+            from: "深邃.{0,15}",
             to: ""
         },
 
@@ -38,22 +38,22 @@ alert("梦晏晨已启动");
 
         {
             pattern: "眼神中闪过一丝.{0,15}",
-            replacement: ""
+            replace: "垂眸后抬起"
         },
 
         {
-            pattern: "像一头.{0,10}野兽般",
-            replacement: "凶狠地"
+            pattern: "像.{0,10}野兽般.{0,15}",
+            replace: "喉结滚动，轻叹一声"
         },
 
         {
             pattern: "审视猎物般的",
-            replacement: "压迫感十足的"
+            replace: "眼睛上下扫视，微拢的手掌内，手指缓缓敲着掌心"
         },
 
         {
             pattern: "毫不掩饰的占有欲",
-            replacement: "强烈的控制欲"
+            replace: "垂下眼帘，喉结滚动，放在身侧的手缓缓收紧"
         }
     ]
 };
