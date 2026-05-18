@@ -80,6 +80,13 @@ window.MengCleaner = {
         // 删除残缺“的”
         cleaned =
             cleaned.replace(/的([，。])/g, "$1");
+            
+        // 删除奇葩字符
+        cleaned = 
+           cleaned.replace(
+            /[^a-zA-Z0-9\u4e00-\u9fa5，。！？、；：“”‘’（）《》〈〉【】『』…\s]/g,
+            ""
+        );
 
         return cleaned.trim();
     }
