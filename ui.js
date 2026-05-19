@@ -271,34 +271,24 @@ function openMengPanel(context){
     renderToggle("#meng-context-container",settings.contextRules);
 
     // ===== 保存按钮 =====
+    // ===== 保存按钮 =====
     $("#meng-save").off("click").on("click",()=>{
 
         try{
-            
-           settings.nameFixRules =
-                (settings.nameFixRules || []).filter(i => i.enabled !== false);
 
-           settings.regexRules =
-                (settings.regexRules || []).filter(i => i.enabled !== false);
+           extension_settings[PLUGIN_ID] =
+               structuredClone(settings);
 
-            settings.contextRules =
-                (settings.contextRules || []).filter(i => i.enabled !== false);
-  
-            settings.simpleReplacements =
-                (settings.simpleReplacements || []).filter(i => i.enabled !== false);
+           saveSettingsDebounced();
 
-            extension_settings[PLUGIN_ID] = settings;
+           alert("✧ 梦晏晨设置已保存");
 
-            saveSettingsDebounced();
+       }catch(e){
 
-            alert("✧ 梦晏晨设置已保存");
+           console.error(e);
 
-        }catch(e){
-
-            console.error(e);
-
-            alert("⚠️ 保存失败");
-        }
+           alert("⚠️ 保存失败");
+       }
     });
 
     // ===== 预览 & 日志 =====
@@ -460,15 +450,26 @@ function openMengPanel(context){
                         }))
                         : [];
 
-                // 过滤非法正则
-                settings.regexRules = settings.regexRules.filter(rule => {
+               // 过滤非法正则
+               // 编译 regex
+               settings.regexRules.forEach(rule => {
+
                     try {
-                        new RegExp(rule.pattern);
-                        return true;
-                    } catch {
-                        console.warn("[梦晏晨] 非法正则已跳过:", rule.pattern);
-                        return false;
+
+                        rule._regex = new RegExp(
+                            rule.pattern,
+                            rule.flags || "g"
+                        );
+
+                    } catch(err){
+
+                         console.warn(
+                             "[梦晏晨] 导入后regex编译失败:",
+                             rule.pattern
+                         );
+
                     }
+
                 });
 
                 settings.contextRules =
@@ -479,7 +480,8 @@ function openMengPanel(context){
                          }))
                          : [];
 
-                extension_settings[PLUGIN_ID] = settings;
+                extension_settings[PLUGIN_ID] =
+                     JSON.parse(JSON.stringify(settings));
 
                 saveSettingsDebounced();
 
