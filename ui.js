@@ -127,7 +127,15 @@ function openMengPanel(context){
     // ===== 预览 & 日志 =====
     $("#meng-preview-run").off("click").on("click",()=>{
         const input=$("#meng-preview-input").val()||"";
-        window.MengYanChen.pendingConfirmations = [];
+        // ⚠️ 安全检查
+        if(!window.MengYanChen) window.MengYanChen = {};
+        if(!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
+        if(!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
+        if(!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function'){
+            alert("⚠️ MengCleaner 未初始化！");
+            return;
+        }
+
         const cleanedText = window.MengCleaner.cleanText(input, settings);
 
         // 待确认新名字显示
