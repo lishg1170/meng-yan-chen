@@ -1,4 +1,9 @@
 function openMengPanel(context){
+    settings.nameFixMap = settings.nameFixMap || {};
+    settings.simpleReplacements = settings.simpleReplacements || [];
+    settings.regexRules = settings.regexRules || [];
+    settings.contextRules = settings.contextRules || [];
+
     const {settings,extension_settings,saveSettingsDebounced,PLUGIN_ID} = context;
     if($("#meng-overlay").length) return;
 
@@ -65,22 +70,40 @@ function openMengPanel(context){
     $("#meng-overlay > div").css({"transition":"all 0.25s","box-shadow":"0 8px 25px rgba(0,0,0,0.45)"});
 
     // ===== 渲染列表函数 =====
-    function renderToggle(containerId,rules,isSimple=false){
-        const container=$(containerId);
+    
+    function renderToggle(containerId, rules, isSimple = false) {
+        const container = $(containerId);
         container.empty();
-        rules.forEach((item)=>{
-            if(!item) return;
-            if(typeof item==="string") item={text:item,enabled:true};
-            const row=$(`
+
+        if (!Array.isArray(rules)) {
+            console.warn("renderToggle received invalid rules:", rules);
+            return;
+        }
+
+        rules.forEach((item) => {
+            if (!item) return;
+
+            if (typeof item === "string") {
+                item = { text: item, enabled: true };
+            }
+ 
+            const row = $(`
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-                    <input type="checkbox" ${item.enabled?'checked':''} data-from="${item.from||item.text||''}" data-to="${item.to||item.text||''}">
-                    <span style="flex:1;color:${isSimple?'#facc15':'#38bdf8'}">${isSimple?item.text||'':JSON.stringify(item)}</span>
-                    <small style="color:#888;margin-left:4px;">${item.desc||''}</small>
+                    <input type="checkbox" ${item.enabled ? 'checked' : ''}>
+                    <span style="flex:1;color:${isSimple ? '#facc15' : '#38bdf8'}">
+                        ${isSimple ? (item.text || '') : JSON.stringify(item)}
+                    </span>
+                    <small style="color:#888;margin-left:4px;">${item.desc || ''}</small>
                 </div>
             `);
-            row.find('input[type=checkbox]').on('change',function(){item.enabled=this.checked;saveSettingsDebounced();});
+
+            row.find('input[type=checkbox]').on('change', function () {
+                item.enabled = this.checked;
+                saveSettingsDebounced();
+            });
+
             container.append(row);
-        });
+       });
     }
 
     // ===== 手动添加功能 =====
@@ -89,7 +112,7 @@ function openMengPanel(context){
         const to=$("#meng-namefix-new-to").val().trim();
         if(!from||!to) return alert("请填写错误名字和正确名字");
         settings.nameFixMap[from]=to;
-        renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap).map(([f,t])=>({from:f,to:t,enabled:true,desc:'手动添加'})));
+        renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap || {}).map(([f,t])=>({from:f,to:t,enabled:true,desc:'手动添加'})));
         saveSettingsDebounced();
         $("#meng-namefix-new-from,#meng-namefix-new-to").val('');
     });
@@ -123,11 +146,10 @@ function openMengPanel(context){
     });
 
     // ===== 初始化列表 =====
-    renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap).map(([from,to])=>({from,to,enabled:true,desc:'根据已知正确名字修正'})));
+    renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap || {}).map(([from,to])=>({from,to,enabled:true,desc:'根据已知正确名字修正'})));
     renderToggle("#meng-simple-container",settings.simpleReplacements,true);
     renderToggle("#meng-regex-container",settings.regexRules);
     renderToggle("#meng-context-container",settings.contextRules);
-}
 
     // ===== 保存按钮 =====
     $("#meng-save").off("click").on("click",()=>{
@@ -139,9 +161,9 @@ function openMengPanel(context){
                 }
             });
             settings.nameFixMap=nameRules;
-            settings.simpleReplacements=settings.simpleReplacements.filter(i=>i.enabled);
-            settings.regexRules=settings.regexRules.filter(i=>i.enabled);
-            settings.contextRules=settings.contextRules.filter(i=>i.enabled);
+            settings.simpleReplacements = (settings.simpleReplacements || []).filter(i => i.enabled);
+             settings.regexRules = (settings.regexRules || []).filter(i => i.enabled);
+             settings.contextRules = (settings.contextRules || []).filter(i => i.enabled);
             extension_settings[PLUGIN_ID]=settings;
             saveSettingsDebounced();
             alert("✧ 梦晏晨设置已保存");
