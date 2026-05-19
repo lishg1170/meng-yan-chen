@@ -61,7 +61,7 @@ function openMengPanel(context){
     $("body").append(html);
     $("#meng-close").off("click").on("click",()=>$("#meng-overlay").remove());
 
-    // ===== 样式优化 =====
+    // ===== 面板样式优化（美化） =====
     $("#meng-overlay").css({"backdrop-filter":"blur(6px)","transition":"opacity 0.25s"});
     $("#meng-overlay > div").css({"transition":"all 0.25s","box-shadow":"0 8px 25px rgba(0,0,0,0.45)"});
     $("#meng-preview-run, #meng-save, #meng-export, #meng-import").css({"transition":"all 0.2s","font-weight":"bold"}).hover(
