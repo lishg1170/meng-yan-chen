@@ -118,38 +118,108 @@ function openMengPanel(context){
             return;
         }
 
-        rules.forEach((item) => {
-            if (!item) return;
+        rules.forEach((item, index) => {
+           if (!item) return;
 
-            if (typeof item === "string") {
-                 item = { from: item, to: "", enabled: true };
-             }
- 
-            const row = $(`
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-                    <input type="checkbox"
-                            data-from="${escapeHtml(item.from || '')}"
-                            data-to="${escapeHtml(item.to || '')}"
-                            ${item.enabled ? 'checked' : ''}>
-                    <span style="flex:1;color:${isSimple ? '#facc15' : '#38bdf8'}">
-                    ${
-                        isSimple
-                            ? `${escapeHtml(item.from || '')} → ${escapeHtml(item.to || '')}`
-                            : item.pattern
-                                ? `${escapeHtml(item.pattern || '')} → ${escapeHtml(item.replace || '(删除)')}`
-                                : escapeHtml(JSON.stringify(item))
-                    }
-                    </span>
-                    <small style="color:#888;margin-left:4px;">${escapeHtml(item.desc || '')}</small>
-                </div>
-            `);
+           if (typeof item === "string") {
+               item = { from: item, to: "", enabled: true };
+           }
 
-            row.find('input[type=checkbox]').on('change', function () {
-                item.enabled = this.checked;
-                saveSettingsDebounced();
-            });
+           const text =
+                item.from !== undefined
+                    ? `${escapeHtml(item.from || '')} → ${escapeHtml(item.to || '')}`
+                    : item.pattern
+                       ? `${escapeHtml(item.pattern || '')} → ${
+                            item.replace !== undefined
+                                ? escapeHtml(item.replace)
+                                : '(删除)'
+                          }`
+                       : escapeHtml(JSON.stringify(item));
 
-            container.append(row);
+           const row = $(`
+               <div style="
+                   display:flex;
+                   align-items:center;
+                   gap:8px;
+                   margin-bottom:6px;
+                   padding:6px;
+                   background:#1a1a1a;
+                   border-radius:8px;
+               ">
+
+                   ${containerId !== "#meng-namefix-container" ? `
+                        <input type="checkbox" ${item.enabled ? 'checked' : ''}>
+                    ` : ``}
+
+                   <span style="
+                       flex:1;
+                       color:${isSimple ? '#facc15' : '#38bdf8'};
+                       word-break:break-all;
+                       font-size:0.92rem;
+                   ">
+                       ${text}
+                   </span>
+
+                   <button
+                       class="meng-delete-rule"
+                       style="
+                           border:none;
+                           background:#ef4444;
+                           color:white;
+                           border-radius:6px;
+                           cursor:pointer;
+                           padding:2px 8px;
+                       "
+                   >
+                       🗑
+                   </button>
+               </div>
+           `);
+
+           // 开关
+           if (containerId !== "#meng-namefix-container") {
+
+                row.find('input[type=checkbox]').on('change', function () {
+
+                    item.enabled = this.checked;
+
+                    saveSettingsDebounced();
+
+                });
+
+           }
+
+           // 删除
+           row.find('.meng-delete-rule').on('click', () => {
+            
+               // 名字修正特殊处理
+               if (containerId === "#meng-namefix-container") {
+                
+                   delete settings.nameFixMap[item.from];
+                
+                   renderToggle(
+                       "#meng-namefix-container",
+                       Object.entries(settings.nameFixMap || {}).map(([from,to]) => ({
+                           from,
+                           to,
+                           enabled:true,
+                           desc:'根据已知正确名字修正'
+                       }))
+
+                   );
+
+               } else {
+        
+                   rules.splice(index, 1);
+
+                   renderToggle(containerId, rules, isSimple);
+
+               }
+
+               saveSettingsDebounced();
+           });
+
+           container.append(row);
        });
     }
 
@@ -203,28 +273,28 @@ function openMengPanel(context){
     // ===== 保存按钮 =====
     $("#meng-save").off("click").on("click",()=>{
         try{
-        const nameRules = {};
 
-        $("#meng-namefix-container input[type=checkbox]").each(function () {
-            if (this.checked) {
-                const from = $(this).data("from");
-                const to = $(this).data("to");
+           settings.simpleReplacements =
+               (settings.simpleReplacements || []).filter(i => i.enabled);
 
-                if (from) {
-                    nameRules[from] = to;
-                }
-            }
-        });
+           settings.regexRules =
+               (settings.regexRules || []).filter(i => i.enabled);
 
-        settings.nameFixMap = nameRules;
-        
-            settings.simpleReplacements = (settings.simpleReplacements || []).filter(i => i.enabled);
-            settings.regexRules = (settings.regexRules || []).filter(i => i.enabled);
-            settings.contextRules = (settings.contextRules || []).filter(i => i.enabled);
-            extension_settings[PLUGIN_ID]=settings;
-            saveSettingsDebounced();
-            alert("✧ 梦晏晨设置已保存");
-        }catch(e){alert("⚠️ 保存失败");}
+           settings.contextRules =
+               (settings.contextRules || []).filter(i => i.enabled);
+
+           extension_settings[PLUGIN_ID] = settings;
+
+           saveSettingsDebounced();
+
+           alert("✧ 梦晏晨设置已保存");
+
+       }catch(e){
+
+           console.error(e);
+
+           alert("⚠️ 保存失败");
+       }
     });
 
     // ===== 预览 & 日志 =====
@@ -236,46 +306,76 @@ function openMengPanel(context){
         if (!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
         if (!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
 
-        if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
-            console.warn("⚠️ MengCleaner 未初始化，延迟执行...");
-            setTimeout(() => $("#meng-preview-run").click(), 500);
-            return;
-        }
+        let cleanedText = "";
+        let retryCount = 0;
 
-        const cleanedText = window.MengCleaner.cleanText(input, settings);
+        function runPreview(){
 
-        // 待确认新名字显示
-        $pendingConfirm.empty();
-        window.MengYanChen.pendingConfirmations.forEach(i => {
-            const row = $(`
-            <div>
-                ${escapeHtml(i.wrong)} → ${escapeHtml(i.correct)}
-                <button style="margin-left:8px;">确认</button>
-            </div> 
-            `);
-            row.find("button").on("click", () => { 
-                window.MengYanChen.correctNames.add(i.correct);    
-                        window.MengYanChen.pendingConfirmations.splice(
-                            window.MengYanChen.pendingConfirmations.indexOf(i), 
-                             1
-                         );
-                row.remove(); 
+            if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
+
+                if (retryCount < 3) {
+
+                    retryCount++;
+
+                    setTimeout(runPreview, 500);
+
+                } else {
+
+                    alert("⚠️ MengCleaner 加载失败");
+
+                }
+
+                return;
+            }
+
+            retryCount = 0;
+
+            // 真正执行预览
+            cleanedText = window.MengCleaner.cleanText(input, settings);
+            
+            // 待确认新名字显示
+            $pendingConfirm.empty();
+            
+            window.MengYanChen.pendingConfirmations.forEach(i => {
+                
+                const row = $(`
+                <div>
+                    ${escapeHtml(i.wrong)} → ${escapeHtml(i.correct)}
+                    <button style="margin-left:8px;">确认</button>
+                </div> 
+                `);
+                
+                row.find("button").on("click", () => { 
+                    
+                    window.MengYanChen.correctNames.add(i.correct);    
+                    
+                    window.MengYanChen.pendingConfirmations.splice(
+                        window.MengYanChen.pendingConfirmations.indexOf(i), 
+                        1
+                    );
+                    row.remove(); 
+                });
+                $pendingConfirm.append(row);
             });
-            $pendingConfirm.append(row);
-         });
 
-         // 日志显示
-         $previewOutput.text(cleanedText);
-         $previewLog.html(`
-             📝 本轮清洗日志：
-             <span style="color:#38bdf8;">名字修正 ${Object.keys(settings.nameFixMap||{}).length}</span>，
-             <span style="color:#facc15;">脏词 ${settings.simpleReplacements.length}</span>，
-             <span style="color:#e879f9;">正则 ${settings.regexRules.length}</span>，
-             <span style="color:#f87171;">上下文删除 ${settings.contextRules.length}</span>
-         `);
-         $liveLog.append(`🕒 [${new Date().toLocaleTimeString()}] 🔍 本轮预览完成\n`);
-         $liveLog.scrollTop($("#meng-live-log")[0].scrollHeight);
-     });
+            // ==== 日志显示 ====
+            $previewOutput.text(cleanedText);
+            $previewLog.html(`
+                 📝 本轮清洗日志：
+                 <span style="color:#38bdf8;">名字修正 ${Object.keys(settings.nameFixMap||{}).length}</span>，
+                 <span style="color:#facc15;">脏词 ${settings.simpleReplacements.length}</span>，
+                 <span style="color:#e879f9;">正则 ${settings.regexRules.length}</span>，
+                 <span style="color:#f87171;">上下文删除 ${settings.contextRules.length}</span>
+            `);
+            $liveLog.append(
+                 `🕒 [${new Date().toLocaleTimeString()}] 🔍 本轮预览完成\n`
+            );
+            $liveLog.scrollTop($("#meng-live-log")[0].scrollHeight);    
+        }
+        // 启动预览
+        runPreview();
+        
+        });
 
     // ===== 导入/导出规则 =====
     $("#meng-export").off("click").on("click",()=>{
