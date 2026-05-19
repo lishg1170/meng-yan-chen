@@ -142,17 +142,26 @@
         }
 
         // 挂载完成
-        window.MengUI.processMessageWithLearning = (msg, id, settings) => {
-            try {
-                processMessage(msg, id, settings);
-            } catch (err) {
-                console.error("[梦晏晨] processMessageWithLearning 错误:", err);
-            }
-        };
-        console.log("[梦晏晨] processMessageWithLearning 挂载完成");
-    }
+        function safeMountProcessMessage() {
+             if (!window.processMessage) {
+                 console.warn("[梦晏晨] processMessage 未就绪，延迟挂载...");
+                 setTimeout(safeMountProcessMessage, 500); // 0.5秒后再试
+                 return;
+         }
 
-    safeMountProcessMessage();
+         if (!window.MengUI) window.MengUI = {};
+         window.MengUI.processMessageWithLearning = (msg, id, settings) => {
+             try {
+                 processMessage(msg, id, settings);
+             } catch (err) {
+                 console.error("[梦晏晨] processMessageWithLearning 错误:", err);
+             }
+         };
+
+         console.log("[梦晏晨] processMessageWithLearning 挂载完成");
+     }
+
+     safeMountProcessMessage();
 
     // ===== 延迟注入 Panda 按钮 =====
     function tryInjectPanda() {
