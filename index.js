@@ -136,12 +136,12 @@
 
         // processMessage 还没就绪，延迟挂载
         if (typeof processMessage !== 'function') {
-            console.warn("[梦晏晨] processMessage 未就绪，延迟挂载");
-            setTimeout(safeMountProcessMessage, 500); // 0.5秒后再试
+            console.warn("[梦晏晨] processMessage 未就绪，延迟挂载...");
+            setTimeout(safeMountProcessMessage, 500); // 每 0.5 秒重试
             return;
         }
 
-        // 挂载 processMessageWithLearning
+        // 已就绪，挂载函数
         window.MengUI.processMessageWithLearning = (msg, id, settings) => {
             try {
                 processMessage(msg, id, settings);
