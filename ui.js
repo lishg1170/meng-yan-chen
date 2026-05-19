@@ -282,8 +282,37 @@ function openMengPanel(context){
             const reader=new FileReader();
             reader.onload=()=>{
                 try{
-                    const imported=JSON.parse(reader.result);
-                    Object.assign(settings, imported);
+                    const imported = JSON.parse(reader.result);
+
+                     if (typeof imported !== "object" || imported === null) {
+                         throw new Error("无效配置");
+                     }
+
+                     settings.nameFixMap = typeof imported.nameFixMap === "object"
+                         ? imported.nameFixMap
+                         : {};
+
+                     settings.simpleReplacements = Array.isArray(imported.simpleReplacements)
+                         ? imported.simpleReplacements
+                         : [];
+
+                     settings.regexRules = Array.isArray(imported.regexRules)
+                         ? imported.regexRules
+                         : [];
+                        
+                      settings.regexRules = settings.regexRules.filter(rule => {
+                          try {
+                              new RegExp(rule.pattern);
+                              return true;
+                          } catch {
+                              console.warn("[梦晏晨] 非法正则已跳过:", rule.pattern);
+                              return false;
+                          }
+                      });
+
+                     settings.contextRules = Array.isArray(imported.contextRules)
+                         ? imported.contextRules
+                         : [];
 
                      settings.nameFixMap = imported.nameFixMap || {};
                      settings.simpleReplacements = imported.simpleReplacements || [];
