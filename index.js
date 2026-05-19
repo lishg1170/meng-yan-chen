@@ -1,7 +1,7 @@
 (async () => {
     console.log("[梦晏晨] 插件加载初始化");
 
-    // ===== 异步安全导入模块 =====
+    // ===== 求求别崩溃了，异步安全导入模块 =====
     let cleanerModule = {};
     let uiModule = {};
     try { cleanerModule = await import("./cleaner.js"); } 
