@@ -54,7 +54,7 @@
         }
     }
 
-    settings.regexRules.forEach(rule => {
+    (settings.regexRules || []).forEach(rule => {
 
         try {
 
