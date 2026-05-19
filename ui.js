@@ -21,8 +21,8 @@ function calcSimilarity(a,b){
 
 // 扫描新名字
 function scanForNewNames(text,settings){
-    pendingConfirmations.length = 0;
     const chineseWords = text.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
+    pendingConfirmations.length=0;
     const newNames = [...new Set(chineseWords)].filter(name=>{
         return !correctNames.has(name) && !settings.nameFixMap[name] && !isCommonWord(name);
     });
@@ -63,14 +63,16 @@ function openMengPanel(context){
 <div id="meng-close" style="cursor:pointer;font-size:1.2rem;">✕</div>
 </div>
 <hr>
-<h3>📛 名字修正</h3><div id="meng-namefix-container"></div>
-<h3>🗑️ 简单脏词</h3><div id="meng-simple-container"></div>
-<h3>⚙️ 正则清洗 (JSON格式)</h3><div id="meng-regex-container"></div>
-<h3>✂️ 上下文删除 (JSON格式)</h3><div id="meng-context-container"></div>
+<h3>📛 名字修正</h3><div id="meng-namefix-container" style="max-height:200px;overflow-y:auto;"></div>
+<h3>🗑️ 简单脏词</h3><div id="meng-simple-container" style="max-height:200px;overflow-y:auto;"></div>
+<h3>⚙️ 正则清洗 (JSON格式)</h3><div id="meng-regex-container" style="max-height:200px;overflow-y:auto;"></div>
+<h3>✂️ 上下文删除 (JSON格式)</h3><div id="meng-context-container" style="max-height:200px;overflow-y:auto;"></div>
+<h3>📌 待确认新名字</h3><div id="pending-confirm-container" style="max-height:120px;overflow-y:auto;background:#111;padding:6px;border-radius:6px;margin-bottom:12px;"></div>
 <h3>🔍 实时预览 & 日志</h3>
 <textarea id="meng-preview-input" style="width:100%;height:100px;margin-bottom:6px;border-radius:10px;padding:10px;background:#2b2b2b;color:white;border:none;" placeholder="粘贴测试文本..."></textarea>
 <div id="meng-preview-output" style="width:100%;min-height:80px;padding:10px;border-radius:10px;background:#111;color:#fff;white-space:pre-wrap;margin-bottom:6px;"></div>
 <div id="meng-preview-log" style="width:100%;padding:6px 10px;border-radius:10px;background:#222;color:#8b5cf6;white-space:pre-wrap;margin-bottom:12px;"></div>
+<div id="meng-live-log" style="width:100%;max-height:100px;overflow-y:auto;background:#111;color:#fff;padding:6px 10px;border-radius:8px;margin-bottom:12px;"></div>
 <button id="meng-preview-run" style="width:100%;padding:10px;border:none;border-radius:10px;background:#8b5cf6;color:white;cursor:pointer;margin-bottom:18px;">🔎 预览效果</button>
 <button id="meng-export" style="width:48%;margin-right:4%;padding:12px;border:none;border-radius:12px;background:#10b981;color:white;font-size:1rem;font-weight:bold;cursor:pointer;">📤 导出规则</button>
 <button id="meng-import" style="width:48%;padding:12px;border:none;border-radius:12px;background:#3b82f6;color:white;font-size:1rem;font-weight:bold;cursor:pointer;">📥 导入规则</button>
@@ -89,7 +91,7 @@ function openMengPanel(context){
             const row=$(`
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
                     <input type="checkbox" ${item.enabled?'checked':''} data-from="${item.from||item.text}" data-to="${item.to||item.text}">
-                    <span style="flex:1">${isSimple?item.text:JSON.stringify(item)}</span>
+                    <span style="flex:1;color:${isSimple?'#facc15':'#38bdf8'}">${isSimple?item.text:JSON.stringify(item)}</span>
                 </div>
             `);
             row.find('input[type=checkbox]').on('change',function(){
@@ -146,7 +148,7 @@ function openMengPanel(context){
         // 名字修正日志
         for(const [from,to] of Object.entries(settings.nameFixMap||{})){
             if(text.includes(to)) log.nameFixes++;
-            text=text.replaceAll(to,`<mark>${to}</mark>`);
+            text=text.replaceAll(to,`<mark class="name-fix">${to}</mark>`);
         }
 
         // 简单脏词日志
@@ -156,7 +158,7 @@ function openMengPanel(context){
                 const regex=new RegExp(rule.from,"g");
                 const matches=text.match(regex);
                 if(matches) log.simpleRemovals+=matches.length;
-                text=text.replace(regex,`<mark>${rule.to}</mark>`);
+                text=text.replace(regex,`<mark class="simple-word">${rule.to}</mark>`);
             }catch(e){console.warn("脏词正则有误:",rule.from);}
         }
 
@@ -167,7 +169,7 @@ function openMengPanel(context){
                 const regex=new RegExp(rule.pattern,rule.flags||"g");
                 const matches=text.match(regex);
                 if(matches) log.regexRemovals+=matches.length;
-                text=text.replace(regex,`<mark>${rule.replace||""}</mark>`);
+                text=text.replace(regex,`<mark class="regex-word">${rule.replace||""}</mark>`);
             }catch(e){console.warn("正则有误:",rule.pattern);}
         }
 
@@ -178,14 +180,29 @@ function openMengPanel(context){
                 const fullRegex=new RegExp(`([^。！？；\\n]*${rule.pattern}[^。！？；\\n]*)`,'g');
                 const matches=text.match(fullRegex);
                 if(matches) log.contextRemovals+=matches.length;
-                text=text.replace(fullRegex,`<mark>【删除句子】</mark>`);
+                text=text.replace(fullRegex,`<mark class="context-delete">【删除句子】</mark>`);
             }catch(e){console.warn("上下文正则有误:",rule.pattern);}
         }
 
         text=text.replace(/\n{3,}/g,"\n\n").replace(/[ \t]{2,}/g," ");
         $("#meng-preview-output").html(text);
-        const list=pendingConfirmations.map(i=>`${i.wrong} → ${i.correct}`).join("\n");
-        $("#meng-preview-log").text(`📝 本轮清洗日志：名字修正 ${log.nameFixes}，脏词 ${log.simpleRemovals}，正则 ${log.regexRemovals}，上下文删除 ${log.contextRemovals}\n待确认新名字:\n${list}`);
+
+        // 待确认新名字显示
+        const pendingDiv=$("#pending-confirm-container");
+        pendingDiv.empty();
+        pendingConfirmations.forEach(i=>{
+            const row=$(`<div>${i.wrong} → ${i.correct} <button style="margin-left:8px;">确认</button></div>`);
+            row.find("button").on("click",()=>{ 
+                correctNames.add(i.correct); 
+                pendingConfirmations.splice(pendingConfirmations.indexOf(i),1);
+                row.remove(); 
+            });
+            pendingDiv.append(row);
+        });
+
+        $("#meng-preview-log").text(`📝 本轮清洗日志：名字修正 ${log.nameFixes}，脏词 ${log.simpleRemovals}，正则 ${log.regexRemovals}，上下文删除 ${log.contextRemovals}`);
+        $("#meng-live-log").append(`📝 [${new Date().toLocaleTimeString()}] 本轮预览完成\n`);
+        $("#meng-live-log").scrollTop($("#meng-live-log")[0].scrollHeight);
     });
 
     // ===== 导入/导出规则 =====
