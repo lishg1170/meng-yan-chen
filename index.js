@@ -2,15 +2,30 @@
     console.log("[梦晏晨] 插件加载初始化");
 
     // ===== 求求别崩溃了，异步安全导入模块 =====
-    let cleanerModule = {};
-    let uiModule = {};
-    try { cleanerModule = await import("./cleaner.js"); } 
-    catch (e) { console.warn("[梦晏晨] cleaner 模块加载失败", e); }
+    let cleanerReady = false;
+    let cleanerPromise = import("./cleaner.js")
+        .then(m => {
+           window.MengCleaner = m.MengCleaner;
+           cleanerReady = true;
+        })
+        .catch(e => {
+            console.warn("[Meng] cleaner加载失败", e);
+        });
+        
+    let uiPromise = import("./ui.js")
+        .then(m => {
+            window.MengUI = m;
+            console.log("[梦晏晨] UI 加载完成");
+        })
+        .catch(e => {
+            console.warn("[梦晏晨] UI 加载失败", e);
+        });
 
-    try { uiModule = await import("./ui.js"); } 
-    catch (e) { console.warn("[梦晏晨] ui 模块加载失败", e); }
-
-    window.MengCleaner = cleanerModule?.MengCleaner;
+    // 👇⭐⭐⭐ 就放这里（重点）
+    window.MengReady = {
+        cleaner: cleanerPromise,
+        ui: uiPromise
+    };
 
     // ===== 安全注入 Panda 按钮 =====
     function injectPandaButton(context) {
