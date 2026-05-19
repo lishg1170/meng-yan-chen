@@ -277,7 +277,8 @@ function openMengPanel(context){
         const input=document.createElement('input');
         input.type='file'; input.accept='.json';
         input.onchange=e=>{
-            const file=e.target.files[0];
+            const file = e.target.files?.[0];
+             if (!file) return;
             const reader=new FileReader();
             reader.onload=()=>{
                 try{
@@ -291,7 +292,19 @@ function openMengPanel(context){
                     extension_settings[PLUGIN_ID]=settings;
                     saveSettingsDebounced();
                     alert('📥 导入成功！');
-                    location.reload();
+                    renderToggle(
+                        "#meng-namefix-container",
+                        Object.entries(settings.nameFixMap || {}).map(([from, to]) => ({
+                            from,
+                            to,
+                            enabled: true,
+                            desc: '导入规则'
+                        }))
+                    );
+
+                    renderToggle("#meng-simple-container", settings.simpleReplacements, true);
+                    renderToggle("#meng-regex-container", settings.regexRules);
+                    renderToggle("#meng-context-container", settings.contextRules);
                 }catch{alert('⚠️ 文件格式错误');}
             };
             reader.readAsText(file);
