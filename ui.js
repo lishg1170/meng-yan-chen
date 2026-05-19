@@ -307,18 +307,17 @@ function openMengPanel(context){
         if (!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
 
         let cleanedText = "";
-        let retryCount = 0;
 
         async function runPreview() {
-            await window.MengReady.cleaner;
+            if (window.MengReady?.cleaner) {
+                 await window.MengReady.cleaner;
+            }
 
             if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
 
                 if (retryCount < 3) {
 
                     retryCount++;
-
-                    setTimeout(runPreview, 500);
 
                 } else {
 
