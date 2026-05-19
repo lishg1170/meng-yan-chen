@@ -107,7 +107,7 @@
         const field = msg.mes ? "mes" : "content";
         let cleaned = msg[field];
 
-        // === 原问题 === regexRules 在 index.js 和 cleaner.js 都处理，可能重复
+        // === 已优化原问题 === regexRules 在 index.js 和 cleaner.js 都处理，可能重复
         // === 优化代码 === 这里直接调用 cleanText，统一处理所有规则
         cleaned = window.MengCleaner.cleanText(cleaned, settings);
 
