@@ -1,8 +1,8 @@
 function openMengPanel(context){
     const {settings,extension_settings,saveSettingsDebounced,PLUGIN_ID} = context;
     
-    if (!settings.nameFixMap || typeof settings.nameFixMap !== "object") {
-        settings.nameFixMap = {};
+    if (!Array.isArray(settings.nameFixRules)) {
+        settings.nameFixRules = [];
     }
     
     settings.simpleReplacements = Array.isArray(settings.simpleReplacements)
@@ -151,9 +151,7 @@ function openMengPanel(context){
                    border-radius:8px;
                ">
 
-                   ${containerId !== "#meng-namefix-container" ? `
-                        <input type="checkbox" ${item.enabled ? 'checked' : ''}>
-                    ` : ``}
+                   <input type="checkbox" ${item.enabled ? 'checked' : ''}>
 
                    <span style="
                        flex:1;
@@ -181,17 +179,14 @@ function openMengPanel(context){
            `);
 
            // 开关
-           if (containerId !== "#meng-namefix-container") {
 
-                row.find('input[type=checkbox]').on('change', function () {
+           row.find('input[type=checkbox]').on('change', function () {
 
-                    item.enabled = this.checked;
+                item.enabled = this.checked;
 
-                    saveSettingsDebounced();
+                saveSettingsDebounced();
 
-                });
-
-           }
+           });
 
            // 删除
            row.find('.meng-delete-rule').on('click', () => {
@@ -199,17 +194,11 @@ function openMengPanel(context){
                // 名字修正特殊处理
                if (containerId === "#meng-namefix-container") {
                 
-                   delete settings.nameFixMap[item.from];
+                   rules.splice(index, 1);
                 
                    renderToggle(
                        "#meng-namefix-container",
-                       Object.entries(settings.nameFixMap || {}).map(([from,to]) => ({
-                           from,
-                           to,
-                           enabled:true,
-                           desc:'根据已知正确名字修正'
-                       }))
-
+                       settings.nameFixRules
                    );
 
                } else {
@@ -232,8 +221,15 @@ function openMengPanel(context){
         const from=$("#meng-namefix-new-from").val().trim();
         const to=$("#meng-namefix-new-to").val().trim();
         if(!from||!to) return alert("请填写错误名字和正确名字");
-        settings.nameFixMap[from]=to;
-        renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap || {}).map(([f,t])=>({from:f,to:t,enabled:true,desc:'手动添加'})));
+
+    settings.nameFixRules.push({
+        from,
+        to,
+        enabled:true,
+        desc:'手动添加'
+    });
+
+    renderToggle("#meng-namefix-container", settings.nameFixRules);
         saveSettingsDebounced();
         $("#meng-namefix-new-from,#meng-namefix-new-to").val('');
     });
@@ -269,7 +265,7 @@ function openMengPanel(context){
     });
 
     // ===== 初始化列表 =====
-    renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap || {}).map(([from,to])=>({from,to,enabled:true,desc:'根据已知正确名字修正'})));
+    renderToggle("#meng-namefix-container",settings.nameFixRules);
     renderToggle("#meng-simple-container",settings.simpleReplacements,true);
     renderToggle("#meng-regex-container",settings.regexRules);
     renderToggle("#meng-context-container",settings.contextRules);
@@ -278,6 +274,9 @@ function openMengPanel(context){
     $("#meng-save").off("click").on("click",()=>{
 
         try{
+            
+           settings.nameFixRules =
+                (settings.nameFixRules || []).filter(i => i.enabled !== false);
 
            settings.regexRules =
                 (settings.regexRules || []).filter(i => i.enabled !== false);
@@ -386,7 +385,8 @@ function openMengPanel(context){
             $previewOutput.text(cleanedText);
             $previewLog.html(`
                  📝 本轮清洗日志：
-                 <span style="color:#38bdf8;">名字修正 ${Object.keys(settings.nameFixMap||{}).length}</span>，
+                 <span style="color:#38bdf8;">名字修正 ${(settings.nameFixRules || []).length}
+</span>，
                  <span style="color:#facc15;">脏词 ${settings.simpleReplacements.length}</span>，
                  <span style="color:#e879f9;">正则 ${settings.regexRules.length}</span>，
                  <span style="color:#f87171;">上下文删除 ${settings.contextRules.length}</span>
@@ -436,10 +436,13 @@ function openMengPanel(context){
                     throw new Error("无效配置");
                 }
 
-                settings.nameFixMap =
-                    typeof imported.nameFixMap === "object"
-                        ? imported.nameFixMap
-                        : {};
+                settings.nameFixRules =
+                      Array.isArray(imported.nameFixRules)
+                          ? imported.nameFixRules.map(i => ({
+                               enabled: true,
+                               ...i
+                       }))
+                       : [];
 
                 settings.simpleReplacements =
                      Array.isArray(imported.simpleReplacements)
@@ -481,13 +484,8 @@ function openMengPanel(context){
                 saveSettingsDebounced();
 
                 renderToggle(
-                    "#meng-namefix-container",
-                    Object.entries(settings.nameFixMap || {}).map(([from, to]) => ({
-                        from,
-                        to,
-                        enabled: true,
-                        desc: '导入规则'
-                    }))
+                     "#meng-namefix-container",
+                     settings.nameFixRules || []
                  );
 
                  renderToggle("#meng-simple-container", settings.simpleReplacements, true);
