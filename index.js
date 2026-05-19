@@ -90,11 +90,10 @@
 
     extension_settings[PLUGIN_ID] = settings;
 
-    // === 优化提示 === 全局统一管理 pendingConfirmations 和 correctNames
-    window.MengYanChen = {
-        correctNames: new Set(['林晨','谢知许','洛君瑾']),
-        pendingConfirmations: []
-    };
+    // === 优化提示 === 全局统一管理 pendingConfirmations 和 correctNames（加容错）
+    window.MengYanChen = window.MengYanChen || {};
+    window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(['林晨','谢知许','洛君瑾']);
+    window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
 
     // ===== 消息处理函数 =====
     function processMessage(msg, messageId) {
