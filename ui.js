@@ -309,7 +309,8 @@ function openMengPanel(context){
         let cleanedText = "";
         let retryCount = 0;
 
-        function runPreview(){
+        async function runPreview() {
+            await window.MengReady.cleaner;
 
             if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
 
