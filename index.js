@@ -131,7 +131,14 @@
     }
 
     // === 优化提示 === 暴露 processMessage 给 UI.js 调用
-    window.MengUI.processMessageWithLearning = (msg, id) => processMessage(msg, id);
+    window.MengUI = window.MengUI || {};
+    window.MengUI.processMessageWithLearning = (msg, id) => {
+        try {
+            processMessage(msg, id);
+        } catch (err) {
+            console.error("[梦晏晨] processMessageWithLearning 错误:", err);
+        }
+    };
 
     // ===== 延迟注入 Panda 按钮 =====
     function tryInjectPanda() {
