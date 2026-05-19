@@ -28,15 +28,17 @@
     }
 
     // ===== 安全挂载 UI 模块 =====
+    const uiModule = await import("./ui.js");
+
     window.MengUI = {
-        ...(uiModule || {}),
-        injectPandaButton,
+        openMengPanel: uiModule.openMengPanel,
+        injectPandaButton: uiModule.injectPandaButton,
     };
 
     const PLUGIN_ID = "meng-yan-chen";
-    const extensions = window.SillyTavern?.extensions || {};
-    const extension_settings = extensions.extension_settings || {};
-    const saveSettingsDebounced = extensions.saveSettingsDebounced || (() => { });
+    const context = window.SillyTavern?.getContext?.();
+    const extension_settings = context?.extension_settings || {};
+    const saveSettingsDebounced = context?.saveSettingsDebounced || (() => {});
 
     // ===== 默认设置 =====
     const defaultSettings = {
