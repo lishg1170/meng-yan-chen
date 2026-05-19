@@ -159,6 +159,8 @@
         if (context._meng_bound) return;
         context._meng_bound = true;
 
+        console.log("[梦晏晨] 开始监听消息");
+
         const bindEvent = (eventType, logText) => {
             context.eventSource.on(eventType, (...args) => {
                 const messageId = Number(args?.[0]);
@@ -169,12 +171,15 @@
 
         bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED, "角色消息事件触发");
         bindEvent(context.event_types.USER_MESSAGE_RENDERED, "用户消息事件触发");
-        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { });
+        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { 
+          console.log("[梦晏晨] 聊天切换事件", args);
+        });
     }
 
     // ===== 初始化入口 =====
     if (!window.__ST_IMPORT_EXPORT_MODE__) {
         $(document).ready(() => {
+            console.log("[梦晏晨] 插件已启动");
             tryInjectPanda();
             bindEvents();
         });
