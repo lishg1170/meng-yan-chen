@@ -28,7 +28,18 @@
 
     // ===== 默认设置 =====
     const defaultSettings = {
-        nameFixMap: { "林晟": "林晨", "林辰": "林晨" },
+        nameFixRules: [
+           {
+              from:"林晟",
+              to:"林晨",
+              enabled:true
+           },
+           {
+              from:"林辰",
+              to:"林晨",
+              enabled:true
+           }
+        ],
         simpleReplacements: [{ from: "眸子", to: "眼睛", enabled: true }],
         regexRules: [],
         contextRules: []
