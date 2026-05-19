@@ -130,15 +130,29 @@
         }
     }
 
-    // === 优化提示 === 暴露 processMessage 给 UI.js 调用
-    window.MengUI = window.MengUI || {};
-    window.MengUI.processMessageWithLearning = (msg, id) => {
-        try {
-            processMessage(msg, id);
-        } catch (err) {
-            console.error("[梦晏晨] processMessageWithLearning 错误:", err);
+    // ===== 安全挂载 processMessageWithLearning =====
+    function safeMountProcessMessage() {
+        if (!window.MengUI) window.MengUI = {};
+    
+        // processMessage 还没就绪，延迟挂载
+        if (typeof processMessage !== 'function') {
+            console.warn("[梦晏晨] processMessage 未就绪，延迟挂载");
+            setTimeout(safeMountProcessMessage, 500);
+            return;
         }
-    };
+
+        // 挂载完成
+        window.MengUI.processMessageWithLearning = (msg, id, settings) => {
+            try {
+                processMessage(msg, id, settings);
+            } catch (err) {
+                console.error("[梦晏晨] processMessageWithLearning 错误:", err);
+            }
+        };
+        console.log("[梦晏晨] processMessageWithLearning 挂载完成");
+    }
+
+    safeMountProcessMessage();
 
     // ===== 延迟注入 Panda 按钮 =====
     function tryInjectPanda() {
