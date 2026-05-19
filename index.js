@@ -133,35 +133,28 @@
     // ===== 安全挂载 processMessageWithLearning =====
     function safeMountProcessMessage() {
         if (!window.MengUI) window.MengUI = {};
-    
+
         // processMessage 还没就绪，延迟挂载
         if (typeof processMessage !== 'function') {
             console.warn("[梦晏晨] processMessage 未就绪，延迟挂载");
-            setTimeout(safeMountProcessMessage, 500);
+            setTimeout(safeMountProcessMessage, 500); // 0.5秒后再试
             return;
         }
 
-        // 挂载完成
-        function safeMountProcessMessage() {
-             if (!window.processMessage) {
-                 console.warn("[梦晏晨] processMessage 未就绪，延迟挂载...");
-                 setTimeout(safeMountProcessMessage, 500); // 0.5秒后再试
-                 return;
-         }
+        // 挂载 processMessageWithLearning
+        window.MengUI.processMessageWithLearning = (msg, id, settings) => {
+            try {
+                processMessage(msg, id, settings);
+            } catch (err) {
+                console.error("[梦晏晨] processMessageWithLearning 错误:", err);
+            }
+        };
 
-         if (!window.MengUI) window.MengUI = {};
-         window.MengUI.processMessageWithLearning = (msg, id, settings) => {
-             try {
-                 processMessage(msg, id, settings);
-             } catch (err) {
-                 console.error("[梦晏晨] processMessageWithLearning 错误:", err);
-             }
-         };
+        console.log("[梦晏晨] processMessageWithLearning 挂载完成");
+    }
 
-         console.log("[梦晏晨] processMessageWithLearning 挂载完成");
-     }
-
-     safeMountProcessMessage();
+    // 启动挂载
+    safeMountProcessMessage();
 
     // ===== 延迟注入 Panda 按钮 =====
     function tryInjectPanda() {
