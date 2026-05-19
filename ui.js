@@ -27,7 +27,8 @@ function openMengPanel(context){
 
 <h3>🗑️ 简单脏词</h3>
 <div style="display:flex;gap:6px;margin-bottom:4px;">
-<input type="text" id="meng-simple-new" placeholder="新脏词/替换" style="flex:1;border-radius:6px;padding:4px;">
+<input type="text" id="meng-simple-new-from" placeholder="错误脏词" style="flex:1;border-radius:6px;padding:4px;">
+<input type="text" id="meng-simple-new-to" placeholder="正确好词" style="flex:1;border-radius:6px;padding:4px;">
 <button id="meng-simple-add" style="border-radius:6px;padding:4px;background:#facc15;color:black;cursor:pointer;">➕ 添加</button>
 </div>
 <div id="meng-simple-container" style="max-height:200px;overflow-y:auto;"></div>
@@ -92,7 +93,7 @@ function openMengPanel(context){
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
                     <input type="checkbox" ${item.enabled ? 'checked' : ''}>
                     <span style="flex:1;color:${isSimple ? '#facc15' : '#38bdf8'}">
-                        ${isSimple ? (item.text || '') : JSON.stringify(item)}
+                        ${isSimple ? `${item.from || ''} → ${item.to || ''}` : JSON.stringify(item)}
                     </span>
                     <small style="color:#888;margin-left:4px;">${item.desc || ''}</small>
                 </div>
@@ -118,14 +119,16 @@ function openMengPanel(context){
         $("#meng-namefix-new-from,#meng-namefix-new-to").val('');
     });
 
-    $("#meng-simple-add").off("click").on("click",()=>{
-        const val=$("#meng-simple-new").val().trim();
-        if(!val) return alert("请填写脏词或替换");
-        settings.simpleReplacements.push({text:val,enabled:true});
-        renderToggle("#meng-simple-container",settings.simpleReplacements,true);
+    $("#meng-simple-add").off("click").on("click", () => {
+        const from = $("#meng-simple-new-from").val().trim();
+        const to = $("#meng-simple-new-to").val().trim();
+        if (!from) return alert("请填写要替换的原词");
+        settings.simpleReplacements.push({ from, to, enabled: true });
+        renderToggle("#meng-simple-container", settings.simpleReplacements, true);
         saveSettingsDebounced();
-        $("#meng-simple-new").val('');
-    });
+        $("#meng-simple-new-from, #meng-simple-new-to").val('');
+   });
+
 
     $("#meng-regex-add").off("click").on("click",()=>{
         const pattern=$("#meng-regex-new-pattern").val().trim();
