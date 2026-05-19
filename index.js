@@ -8,7 +8,12 @@
 
     // 全局挂载
     window.MengCleaner = cleanerModule.MengCleaner;
-    window.MengUI = uiModule;
+
+    // ===== 核心改动 START =====
+    // 避免覆盖 safeMountProcessMessage 已挂载的函数
+    window.MengUI = window.MengUI || {};
+    Object.assign(window.MengUI, uiModule);
+    // ===== 核心改动 END =====
 
     const PLUGIN_ID = "meng-yan-chen";
 
@@ -77,20 +82,20 @@
                 "enabled": true
             }
         ],
-        contextRules: [] // === 优化提示 ===: 确保 contextRules 存在，方便后续 cleanText 调用
+        contextRules: [] // 确保 contextRules 存在
     };
 
     // 合并用户设置
     let settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
 
-    // 预编译正则（cleaner.js 内也会编译，这里可选）
+    // 预编译正则
     settings.regexRules.forEach(rule => {
         if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g");
     });
 
     extension_settings[PLUGIN_ID] = settings;
 
-    // === 优化提示 === 全局统一管理 pendingConfirmations 和 correctNames（加容错）
+    // ===== 全局统一管理 pendingConfirmations 和 correctNames =====
     window.MengYanChen = window.MengYanChen || {};
     window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(['林晨','谢知许','洛君瑾']);
     window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
@@ -106,22 +111,18 @@
         const field = msg.mes ? "mes" : "content";
         let cleaned = msg[field];
 
-        // === 已优化原问题 === regexRules 在 index.js 和 cleaner.js 都处理，可能重复
-        // === 优化代码 === 这里直接调用 cleanText，统一处理所有规则
         cleaned = window.MengCleaner.cleanText(cleaned, settings);
 
         if (cleaned !== msg[field]) {
             msg[field] = cleaned;
             msg._meng_cleaned = true;
 
-            // 更新内存消息
             const chat = window.SillyTavern?.getContext?.()?.chat;
             if (chat?.[messageId]) {
                 chat[messageId][field] = cleaned;
                 chat[messageId]._meng_cleaned = true;
             }
 
-            // 更新 DOM
             const mesBlock = document.querySelector(`#chat .mes[mesid="${messageId}"] .mes_text`);
             if (mesBlock) {
                 mesBlock.textContent = cleaned;
@@ -134,26 +135,25 @@
     function safeMountProcessMessage() {
         if (!window.MengUI) window.MengUI = {};
 
-        // processMessage 还没就绪，延迟挂载
         if (typeof processMessage !== 'function') {
             console.warn("[梦晏晨] processMessage 未就绪，延迟挂载...");
-            setTimeout(safeMountProcessMessage, 500); // 每 0.5 秒重试
+            setTimeout(safeMountProcessMessage, 500);
             return;
         }
 
-        // 已就绪，挂载函数
-        window.MengUI.processMessageWithLearning = (msg, id, settings) => {
-            try {
-                processMessage(msg, id, settings);
-            } catch (err) {
-                console.error("[梦晏晨] processMessageWithLearning 错误:", err);
-            }
-        };
+        if (!window.MengUI.processMessageWithLearning) {
+            window.MengUI.processMessageWithLearning = (msg, id, settings) => {
+                try {
+                    processMessage(msg, id, settings);
+                } catch (err) {
+                    console.error("[梦晏晨] processMessageWithLearning 错误:", err);
+                }
+            };
+        }
 
         console.log("[梦晏晨] processMessageWithLearning 挂载完成");
     }
 
-    // 启动挂载
     safeMountProcessMessage();
 
     // ===== 延迟注入 Panda 按钮 =====
@@ -171,7 +171,6 @@
     }
 
     // ===== 绑定事件 =====
-    // === 优化提示 === 使用轮询绑定，确保 eventSource 就绪
     function bindEvents() {
         const context = window.SillyTavern?.getContext?.();
         if (!context?.eventSource) {
