@@ -12,40 +12,40 @@ function openMengPanel(context){
 <hr>
 
 <h3>📛 名字修正</h3>
-<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">
-自动检测文本中的名字错误，并根据已知正确名字自动修正。
+<div style="display:flex;gap:6px;margin-bottom:4px;">
+<input type="text" id="meng-namefix-new-from" placeholder="错误名字" style="flex:1;border-radius:6px;padding:4px;">
+<input type="text" id="meng-namefix-new-to" placeholder="正确名字" style="flex:1;border-radius:6px;padding:4px;">
+<button id="meng-namefix-add" style="border-radius:6px;padding:4px;background:#8b5cf6;color:white;cursor:pointer;">➕ 添加</button>
 </div>
 <div id="meng-namefix-container" style="max-height:200px;overflow-y:auto;"></div>
 
 <h3>🗑️ 简单脏词</h3>
-<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">
-删除文本中已定义的简单脏词或替换词。
+<div style="display:flex;gap:6px;margin-bottom:4px;">
+<input type="text" id="meng-simple-new" placeholder="新脏词/替换" style="flex:1;border-radius:6px;padding:4px;">
+<button id="meng-simple-add" style="border-radius:6px;padding:4px;background:#facc15;color:black;cursor:pointer;">➕ 添加</button>
 </div>
 <div id="meng-simple-container" style="max-height:200px;overflow-y:auto;"></div>
 
 <h3>⚙️ 正则清洗 (JSON格式)</h3>
-<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">
-使用正则规则清洗文本，可匹配复杂模式。JSON 格式支持启用/禁用规则和描述。
+<div style="display:flex;gap:6px;margin-bottom:4px;">
+<input type="text" id="meng-regex-new-pattern" placeholder="正则 pattern" style="flex:2;border-radius:6px;padding:4px;">
+<input type="text" id="meng-regex-new-replace" placeholder="替换文本" style="flex:1;border-radius:6px;padding:4px;">
+<button id="meng-regex-add" style="border-radius:6px;padding:4px;background:#3b82f6;color:white;cursor:pointer;">➕ 添加</button>
 </div>
 <div id="meng-regex-container" style="max-height:200px;overflow-y:auto;"></div>
 
 <h3>✂️ 上下文删除 (JSON格式)</h3>
-<div style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">
-根据上下文删除整句内容，匹配规则前后标点之间的句子。
+<div style="display:flex;gap:6px;margin-bottom:4px;">
+<input type="text" id="meng-context-new" placeholder="上下文删除内容" style="flex:1;border-radius:6px;padding:4px;">
+<button id="meng-context-add" style="border-radius:6px;padding:4px;background:#e879f9;color:white;cursor:pointer;">➕ 添加</button>
 </div>
 <div id="meng-context-container" style="max-height:200px;overflow-y:auto;"></div>
 
 <h3>📌 待确认新名字</h3>
-<div style="color:#aaa;font-size:0.85rem;margin-bottom:4px;">
-检测到可能的新名字，需要你确认是否自动修正。
-</div>
 <div id="pending-confirm-container" style="max-height:120px;overflow-y:auto;background:#111;padding:6px;border-radius:6px;margin-bottom:12px;"></div>
 
 <h3>🔍 实时预览 & 日志</h3>
-<div style="color:#aaa;font-size:0.85rem;margin-bottom:4px;">
-可粘贴文本进行实时清洗预览，同时显示详细日志。
-</div>
-<textarea id="meng-preview-input" style="width:100%;height:100px;margin-bottom:6px;border-radius:10px;padding:10px;background:#2b2b2b;color:white;border:none;" placeholder="粘贴测试文本（系统会自动清洗名字、脏词、正则和上下文）..."></textarea>
+<textarea id="meng-preview-input" style="width:100%;height:100px;margin-bottom:6px;border-radius:10px;padding:10px;background:#2b2b2b;color:white;border:none;"></textarea>
 <div id="meng-preview-output" style="width:100%;min-height:80px;padding:10px;border-radius:10px;background:#111;color:#fff;white-space:pre-wrap;margin-bottom:6px;"></div>
 <div id="meng-preview-log" style="width:100%;padding:6px 10px;border-radius:10px;background:#222;color:#8b5cf6;white-space:pre-wrap;margin-bottom:12px;"></div>
 <div id="meng-live-log" style="width:100%;max-height:100px;overflow-y:auto;background:#111;color:#fff;padding:6px 10px;border-radius:8px;margin-bottom:12px;"></div>
@@ -57,53 +57,77 @@ function openMengPanel(context){
 </div></div>
 `;
 
-    // ===== 插入 HTML =====
     $("body").append(html);
     $("#meng-close").off("click").on("click",()=>$("#meng-overlay").remove());
 
-    // ===== 面板样式优化（美化） =====
+    // ===== 面板样式优化 =====
     $("#meng-overlay").css({"backdrop-filter":"blur(6px)","transition":"opacity 0.25s"});
     $("#meng-overlay > div").css({"transition":"all 0.25s","box-shadow":"0 8px 25px rgba(0,0,0,0.45)"});
-    $("#meng-preview-run, #meng-save, #meng-export, #meng-import").css({"transition":"all 0.2s","font-weight":"bold"}).hover(
-        function(){ $(this).css({"filter":"brightness(1.15)","box-shadow":"0 4px 12px rgba(0,0,0,0.4)"}); },
-        function(){ $(this).css({"filter":"brightness(1)","box-shadow":"none"}); }
-    );
-    $("#meng-namefix-container, #meng-simple-container, #meng-regex-container, #meng-context-container, #pending-confirm-container, #meng-live-log")
-        .css({"scrollbar-width":"thin","scrollbar-color":"#888 #111"});
-    $("#meng-preview-log").css({"line-height":"1.4em","font-family":"monospace","font-size":"0.95rem"});
-    $("#meng-live-log").css({"line-height":"1.3em","font-family":"monospace","font-size":"0.85rem"});
 
-    // ===== Helper: toggle 列表 =====
+    // ===== 渲染列表函数 =====
     function renderToggle(containerId,rules,isSimple=false){
         const container=$(containerId);
         container.empty();
         rules.forEach((item)=>{
+            if(!item) return;
             if(typeof item==="string") item={text:item,enabled:true};
             const row=$(`
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-                    <input type="checkbox" ${item.enabled?'checked':''} data-from="${item.from||item.text}" data-to="${item.to||item.text}">
-                    <span style="flex:1;color:${isSimple?'#facc15':'#38bdf8'}">${isSimple?item.text:JSON.stringify(item)}</span>
+                    <input type="checkbox" ${item.enabled?'checked':''} data-from="${item.from||item.text||''}" data-to="${item.to||item.text||''}">
+                    <span style="flex:1;color:${isSimple?'#facc15':'#38bdf8'}">${isSimple?item.text||'':JSON.stringify(item)}</span>
                     <small style="color:#888;margin-left:4px;">${item.desc||''}</small>
                 </div>
             `);
-            row.find('input[type=checkbox]').on('change',function(){
-                item.enabled=this.checked;
-                saveSettingsDebounced();
-            });
+            row.find('input[type=checkbox]').on('change',function(){item.enabled=this.checked;saveSettingsDebounced();});
             container.append(row);
         });
     }
 
-    // ===== 初始化 toggle 列表 =====
-    settings.nameFixMap=settings.nameFixMap||{};
-    settings.simpleReplacements=(settings.simpleReplacements||[]).map(i=>i.enabled===undefined?{...i,enabled:true}:i);
-    settings.regexRules=(settings.regexRules||[]).map(i=>i.enabled===undefined?{...i,enabled:true}:i);
-    settings.contextRules=(settings.contextRules||[]).map(i=>i.enabled===undefined?{...i,enabled:true}:i);
+    // ===== 手动添加功能 =====
+    $("#meng-namefix-add").off("click").on("click",()=>{
+        const from=$("#meng-namefix-new-from").val().trim();
+        const to=$("#meng-namefix-new-to").val().trim();
+        if(!from||!to) return alert("请填写错误名字和正确名字");
+        settings.nameFixMap[from]=to;
+        renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap).map(([f,t])=>({from:f,to:t,enabled:true,desc:'手动添加'})));
+        saveSettingsDebounced();
+        $("#meng-namefix-new-from,#meng-namefix-new-to").val('');
+    });
 
+    $("#meng-simple-add").off("click").on("click",()=>{
+        const val=$("#meng-simple-new").val().trim();
+        if(!val) return alert("请填写脏词或替换");
+        settings.simpleReplacements.push({text:val,enabled:true});
+        renderToggle("#meng-simple-container",settings.simpleReplacements,true);
+        saveSettingsDebounced();
+        $("#meng-simple-new").val('');
+    });
+
+    $("#meng-regex-add").off("click").on("click",()=>{
+        const pattern=$("#meng-regex-new-pattern").val().trim();
+        const replace=$("#meng-regex-new-replace").val().trim();
+        if(!pattern) return alert("请填写正则 pattern");
+        settings.regexRules.push({pattern,replace,enabled:true,_regex:{}});
+        renderToggle("#meng-regex-container",settings.regexRules);
+        saveSettingsDebounced();
+        $("#meng-regex-new-pattern,#meng-regex-new-replace").val('');
+    });
+
+    $("#meng-context-add").off("click").on("click",()=>{
+        const val=$("#meng-context-new").val().trim();
+        if(!val) return alert("请填写上下文删除内容");
+        settings.contextRules.push({pattern:val,enabled:true});
+        renderToggle("#meng-context-container",settings.contextRules);
+        saveSettingsDebounced();
+        $("#meng-context-new").val('');
+    });
+
+    // ===== 初始化列表 =====
     renderToggle("#meng-namefix-container",Object.entries(settings.nameFixMap).map(([from,to])=>({from,to,enabled:true,desc:'根据已知正确名字修正'})));
     renderToggle("#meng-simple-container",settings.simpleReplacements,true);
     renderToggle("#meng-regex-container",settings.regexRules);
     renderToggle("#meng-context-container",settings.contextRules);
+}
 
     // ===== 保存按钮 =====
     $("#meng-save").off("click").on("click",()=>{
