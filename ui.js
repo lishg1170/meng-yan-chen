@@ -162,8 +162,8 @@ function openMengPanel(context){
             });
             settings.nameFixMap=nameRules;
             settings.simpleReplacements = (settings.simpleReplacements || []).filter(i => i.enabled);
-             settings.regexRules = (settings.regexRules || []).filter(i => i.enabled);
-             settings.contextRules = (settings.contextRules || []).filter(i => i.enabled);
+            settings.regexRules = (settings.regexRules || []).filter(i => i.enabled);
+            settings.contextRules = (settings.contextRules || []).filter(i => i.enabled);
             extension_settings[PLUGIN_ID]=settings;
             saveSettingsDebounced();
             alert("✧ 梦晏晨设置已保存");
