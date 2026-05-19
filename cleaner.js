@@ -40,17 +40,18 @@ const MengCleaner = {
         //
         for (const rule of settings.nameFixRules || []) {
 
-            if (rule.enabled === false) continue;
+             if (rule.enabled === false) continue;
 
-            if (cleaned.includes(rule.from)) {
+             const from = rule.from;
+             const to = rule.to;
 
-                console.log(
-                    `[梦晏晨] 名字修正: "${rule.from}" → "${rule.to}"`
-                );
+             if (!from || !to) continue;
 
-            }
+             if (cleaned.includes(from)) {
+                 console.log(`[梦晏晨] 名字修正: "${from}" → "${to}"`);
+             }
 
-            cleaned = cleaned.replaceAll(rule.from, rule.to);
+             cleaned = cleaned.replaceAll(from, to);
         }
 
         //
