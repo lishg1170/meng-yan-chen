@@ -125,44 +125,46 @@ function openMengPanel(context){
     });
 
     // ===== 预览 & 日志 =====
-    $("#meng-preview-run").off("click").on("click",()=>{
-        const input=$("#meng-preview-input").val()||"";
-        // ⚠️ 安全检查
-        if(!window.MengYanChen) window.MengYanChen = {};
-        if(!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
-        if(!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
-        if(!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function'){
-            alert("⚠️ MengCleaner 未初始化！");
+    $("#meng-preview-run").off("click").on("click", () => {
+        const input = $("#meng-preview-input").val() || "";
+
+        // ⚠️ 安全检查 + 延迟重试
+        if (!window.MengYanChen) window.MengYanChen = {};
+        if (!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
+        if (!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
+
+        if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
+            console.warn("⚠️ MengCleaner 未初始化，延迟执行...");
+            setTimeout(() => $("#meng-preview-run").click(), 500);
             return;
         }
 
         const cleanedText = window.MengCleaner.cleanText(input, settings);
 
         // 待确认新名字显示
-        const pendingDiv=$("#pending-confirm-container");
+        const pendingDiv = $("#pending-confirm-container");
         pendingDiv.empty();
-        window.MengYanChen.pendingConfirmations.forEach(i=>{
-            const row=$(`<div>${i.wrong} → ${i.correct} <button style="margin-left:8px;">确认</button></div>`);
-            row.find("button").on("click",()=>{ 
-                window.MengYanChen.correctNames.add(i.correct); 
-                window.MengYanChen.pendingConfirmations.splice(window.MengYanChen.pendingConfirmations.indexOf(i),1);
+        window.MengYanChen.pendingConfirmations.forEach(i => {
+            const row = $(`<div>${i.wrong} → ${i.correct} <button style="margin-left:8px;">确认</button></div>`);
+            row.find("button").on("click", () => { 
+                window.MengYanChen.correctNames.add(i.correct);            window.MengYanChen.pendingConfirmations.splice(window.MengYanChen.pendingConfirmations.indexOf(i), 1);
                 row.remove(); 
             });
             pendingDiv.append(row);
-        });
+         });
 
-        // 日志显示
-        $("#meng-preview-output").text(cleanedText);
-        $("#meng-preview-log").html(`
-        📝 本轮清洗日志：
-        <span style="color:#38bdf8;">名字修正 ${Object.keys(settings.nameFixMap||{}).length}</span>，
-        <span style="color:#facc15;">脏词 ${settings.simpleReplacements.length}</span>，
-        <span style="color:#e879f9;">正则 ${settings.regexRules.length}</span>，
-        <span style="color:#f87171;">上下文删除 ${settings.contextRules.length}</span>
-    `);
-        $("#meng-live-log").append(`🕒 [${new Date().toLocaleTimeString()}] 🔍 本轮预览完成\n`);
-        $("#meng-live-log").scrollTop($("#meng-live-log")[0].scrollHeight);
-    });
+         // 日志显示
+         $("#meng-preview-output").text(cleanedText);
+         $("#meng-preview-log").html(`
+             📝 本轮清洗日志：
+             <span style="color:#38bdf8;">名字修正 ${Object.keys(settings.nameFixMap||{}).length}</span>，
+             <span style="color:#facc15;">脏词 ${settings.simpleReplacements.length}</span>，
+             <span style="color:#e879f9;">正则 ${settings.regexRules.length}</span>，
+             <span style="color:#f87171;">上下文删除 ${settings.contextRules.length}</span>
+         `);
+         $("#meng-live-log").append(`🕒 [${new Date().toLocaleTimeString()}] 🔍 本轮预览完成\n`);
+         $("#meng-live-log").scrollTop($("#meng-live-log")[0].scrollHeight);
+     });
 
     // ===== 导入/导出规则 =====
     $("#meng-export").off("click").on("click",()=>{
