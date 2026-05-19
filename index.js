@@ -5,7 +5,7 @@
     let cleanerReady = false;
     let cleanerPromise = import("./cleaner.js")
         .then(m => {
-           window.MengCleaner = m.MengCleaner;
+           window.MengCleaner = m.MengCleaner || m.default;
            cleanerReady = true;
         })
         .catch(e => {
@@ -20,12 +20,6 @@
         .catch(e => {
             console.warn("[梦晏晨] UI 加载失败", e);
         });
-
-    // 👇⭐⭐⭐ 就放这里（重点）
-    window.MengReady = {
-        cleaner: cleanerPromise,
-        ui: uiPromise
-    };
 
     // ===== 安全注入 Panda 按钮 =====
     function injectPandaButton(context) {
@@ -71,8 +65,20 @@
         }
     }
 
-    settings.regexRules.forEach(rule => { 
-        if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g"); 
+    settings.regexRules.forEach(rule => {
+
+        try {
+
+            if (!rule._regex) {
+                rule._regex = new RegExp(rule.pattern, rule.flags || "g");
+            }
+
+        } catch(err){
+
+            console.warn("[梦晏晨] 非法正则:", rule.pattern);
+
+        }
+
     });
     extension_settings[PLUGIN_ID] = settings;
 
@@ -82,10 +88,10 @@
     window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
 
     // ===== 消息处理函数 =====
-    function processMessage(msg, messageId) {
+    async function processMessage(msg, messageId) {
         if (!window.MengCleaner || !msg || (!msg.mes && !msg.content) || msg._meng_cleaned) return;
         const field = msg.mes ? "mes" : "content";
-        const cleaned = window.MengCleaner.cleanText(msg[field], settings);
+        const cleaned = await window.MengCleaner.cleanText(msg[field], settings);
         if (cleaned !== msg[field]) {
             msg[field] = cleaned;
             msg._meng_cleaned = true;
@@ -129,7 +135,9 @@
             context.eventSource.on(eventType, (...args) => {
                 const messageId = Number(args?.[0]);
                 const msg = context.chat?.[messageId];
-                if (msg) processMessage(msg, messageId);
+                if (msg) {
+                     processMessage(msg, messageId).catch(console.error);
+                 }
             });
         };
         bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
