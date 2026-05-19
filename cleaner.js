@@ -83,12 +83,28 @@ const MengCleaner = {
         // 4️⃣ 句子清理
         //
         cleaned = cleaned
-            .replace(/\n{3,}/g, "\n\n")     // 删除连续空行
-            .replace(/[ \t]{2,}/g, " ")        // 删除多余空格
-            .replace(/，\s*，/g, "，")     // 删除多余逗号
-            .replace(/。\s*。/g, "。")    // 删除多余句号
-            .replace(/：\s*：/g, "：")    // 删除多余冒号
-            .replace(/的([，。])/g,"$1")   // 只在“的”前后重复或空格时才处理，正常无影响
+            .replace(/\n{3,}/g, "\n\n")
+            .replace(/[ \t]{2,}/g, " ")
+
+            // 同符号重复
+            .replace(/，\s*，/g, "，")
+            .replace(/。\s*。/g, "。")
+            .replace(/：\s*：/g, "：")
+
+            // 混合标点修复
+            .replace(/，\s*。/g, "。")
+            .replace(/。\s*，/g, "，")
+            .replace(/,\s*\./g, ".")
+            .replace(/\.\s*,/g, ",")
+
+            // 连续标点压缩
+            .replace(/[，,]{2,}/g, "，")
+            .replace(/[。\.]{2,}/g, "。")
+            .replace(/[！!]{2,}/g, "！")
+            .replace(/[？?]{2,}/g, "？")
+
+            // 的 + 标点
+            .replace(/的([，。])/g,"$1")
             .replace(/\s*的\s*([，。])/g, "$1");
 
         //
