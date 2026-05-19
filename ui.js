@@ -263,3 +263,4 @@ function injectPandaButton(context){
 
 // ===== 暴露 API =====
 window.MengUI={openMengPanel,injectPandaButton};
+export { openMengPanel, injectPandaButton };  
