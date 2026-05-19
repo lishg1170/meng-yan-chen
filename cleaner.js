@@ -2,7 +2,7 @@
 // 优化版 MengCleaner
 // ======================
 const MengCleaner = {
-    cleanText(text, settings) {
+    async cleanText(text, settings) {
         if (!text) return text;
 
         let cleaned = text;
@@ -68,7 +68,7 @@ const MengCleaner = {
             if (cleaned.includes(rule.from)) {
                 console.log(`[梦晏晨] 简单替换: "${rule.from}" → "${rule.to}"`);
             }
-            cleaned = cleaned.replaceAll(rule.from, rule.to);
+            cleaned = cleaned.replaceAll(rule.from, rule.to || "");
         }
 
         //
