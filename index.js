@@ -131,7 +131,7 @@
     }
 
     // === 优化提示 === 暴露 processMessage 给 UI.js 调用
-    window.MengUI.processMessageWithLearning = (msg, id, settings) => processMessage(msg, id, settings);
+    window.MengUI.processMessageWithLearning = (msg, id) => processMessage(msg, id);
 
     // ===== 延迟注入 Panda 按钮 =====
     function tryInjectPanda() {
