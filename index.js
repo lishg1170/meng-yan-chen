@@ -2,17 +2,17 @@
     console.log("[梦晏晨] 插件加载初始化");
 
     // ===== 异步安全导入模块 =====
-    let cleanerModule, uiModule;
+    let cleanerModule = {};
+    let uiModule = {};
     try { cleanerModule = await import("./cleaner.js"); } 
     catch (e) { console.warn("[梦晏晨] cleaner 模块加载失败", e); }
 
     try { uiModule = await import("./ui.js"); } 
     catch (e) { console.warn("[梦晏晨] ui 模块加载失败", e); }
 
-    // ===== 全局挂载 =====
     window.MengCleaner = cleanerModule?.MengCleaner;
 
-    // 安全挂载 UI 和自定义方法
+    // ===== 安全注入 Panda 按钮 =====
     function injectPandaButton(context) {
         const target = $("#data_bank_wand_container");
         if (!target.length) { setTimeout(() => injectPandaButton(context), 500); return; }
@@ -22,15 +22,15 @@
 <div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;">
 <span>🐼</span><span>梦晏晨</span>
 </div>`);
-        btn.on("click", () => openMengPanel(context));
+        btn.on("click", () => window.MengUI.openMengPanel?.(context));
         target.append(btn);
         console.log("[梦晏晨] 🐼 已成功注入");
     }
 
+    // ===== 安全挂载 UI 模块 =====
     window.MengUI = {
         ...(uiModule || {}),
         injectPandaButton,
-        openMengPanel
     };
 
     const PLUGIN_ID = "meng-yan-chen";
@@ -42,79 +42,27 @@
     const defaultSettings = {
         nameFixMap: { "林晟": "林晨", "林辰": "林晨" },
         simpleReplacements: [{ from: "眸子", to: "眼睛", enabled: true }],
-        regexRules: [
-            {
-                "pattern": "(指尖|深邃|博弈|精准|优雅|微颤|笼中鸟|缠绵|猎手|雕像|雕塑|评估|羁绊|宿命|升华|暗流涌动|不可名状)",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "[^，。！？；：:]{0,12}(野兽|幼兽|兽|猎物|猎人|毒蛇|困兽|小兽|公狗|母狗|猫|小猫|狼)[^，。！？；]{0,12}(一样|似的|般|一般)",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "(好像|像|仿佛|宛若|如同|好似|犹如|像是)[^，。！？；：:\\n]{0,18}(一样|一般|般|似的)",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "(投进|坠入|落入|沉入|陷入|跌进|没入|溺入|沉溺于|淹没在)[^，。！？；：:\\n]{0,18}(湖|水面|海面|海里|心湖|深井|漩涡|深渊|泥潭|浪潮|潮水|海浪|暗流|洪流|水波|池水|潭水|湖泊|湖心|汪洋|abyss|abyssal)",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "[^，。！？；]{0,8}(瓷娃娃|洋娃娃|木偶|提线木偶|玩偶|玩具|工具|容器|器具|所有物|收藏品|傀儡)[^，。！？；]{0,12}(一样|似的|般|一般)",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "(吞没|裹挟|席卷|翻涌|蔓延)[^，。！？；：:\\n]{0,15}(情绪|意识|理智|海浪|浪潮|潮水|暗流)",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "[^，。！？；]{0,6}深邃[的地得][^，。！？；]{0,10}",
-                "replace": "",
-                "enabled": true
-            },
-            {
-                "pattern": "(忽然，?|突然，?|猛地，?|缓缓，?|悄然，?)?[^，。！？；]{0,2}眼神中闪过一丝[^，。！？、；]{0,12}",
-                "replace": "垂眸片刻",
-                "enabled": true
-            },
-            {
-                "pattern": "(露出|带着|用)[^，。！？；]{0,6}审视猎物般的[^，。！？；]{0,18}",
-                "replace": "眼神上下扫视，微拢的手掌内，手指缓缓敲着掌心",
-                "enabled": true
-            },
-            {
-                "pattern": "(眼底|眼里|眼中|眼眸中)[^，。！？；]{0,6}毫不掩饰的[^，。！？；]{0,10}占有欲",
-                "replace": "垂下眼帘，喉结滚动，放在身侧的手缓缓收紧",
-                "enabled": true
-            }
-        ],
+        regexRules: [],
         contextRules: []
     };
 
-    // 合并用户设置
     let settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
 
-    // 预编译正则
-    settings.regexRules.forEach(rule => { if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g"); });
+    settings.regexRules.forEach(rule => { 
+        if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g"); 
+    });
     extension_settings[PLUGIN_ID] = settings;
 
-    // 全局管理 pendingConfirmations / correctNames
+    // ===== 全局管理 pendingConfirmations / correctNames =====
     window.MengYanChen = window.MengYanChen || {};
     window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(['林晨','谢知许','洛君瑾']);
     window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
 
     // ===== 消息处理函数 =====
     function processMessage(msg, messageId) {
-        if (!window.MengCleaner || !msg?.mes && !msg?.content || msg._meng_cleaned) return;
+        if (!window.MengCleaner || !msg || (!msg.mes && !msg.content) || msg._meng_cleaned) return;
         const field = msg.mes ? "mes" : "content";
-        let cleaned = window.MengCleaner.cleanText(msg[field], settings);
-
+        const cleaned = window.MengCleaner.cleanText(msg[field], settings);
         if (cleaned !== msg[field]) {
             msg[field] = cleaned;
             msg._meng_cleaned = true;
@@ -129,7 +77,6 @@
     function safeMountProcessMessage() {
         if (!window.MengUI) window.MengUI = {};
         if (typeof processMessage !== 'function') { setTimeout(safeMountProcessMessage, 500); return; }
-
         window.MengUI.processMessageWithLearning = (msg, id, settings) => {
             try { processMessage(msg, id, settings); } 
             catch (err) { console.error("[梦晏晨] processMessageWithLearning 错误:", err); }
@@ -139,20 +86,14 @@
     safeMountProcessMessage();
 
     // ===== 延迟注入 Panda 按钮 =====
-    function tryInjectPanda() {
-        if (!$("#data_bank_wand_container").length) { setTimeout(tryInjectPanda, 500); return; }
-        if (!window.MengUI?.injectPandaButton) { setTimeout(tryInjectPanda, 500); return; }
+    function tryInjectPanda(context) {
+        if (!$("#data_bank_wand_container").length) { setTimeout(() => tryInjectPanda(context), 500); return; }
+        if (!window.MengUI?.injectPandaButton) { setTimeout(() => tryInjectPanda(context), 500); return; }
         if ($("#meng-panda-btn").length) return;
-
-        window.MengUI.injectPandaButton({
-            settings,
-            extension_settings,
-            saveSettingsDebounced,
-            PLUGIN_ID
-        });
+        window.MengUI.injectPandaButton({ settings, extension_settings, saveSettingsDebounced, PLUGIN_ID });
     }
 
-    // ===== 绑定事件 =====
+    // ===== 绑定消息事件 =====
     function bindEvents() {
         const context = window.SillyTavern?.getContext?.();
         if (!context?.eventSource) { setTimeout(bindEvents, 500); return; }
@@ -161,26 +102,23 @@
 
         console.log("[梦晏晨] 开始监听消息");
 
-        const bindEvent = (eventType, logText) => {
+        const bindEvent = (eventType) => {
             context.eventSource.on(eventType, (...args) => {
                 const messageId = Number(args?.[0]);
                 const msg = context.chat?.[messageId];
                 if (msg) processMessage(msg, messageId);
             });
         };
-
-        bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED, "角色消息事件触发");
-        bindEvent(context.event_types.USER_MESSAGE_RENDERED, "用户消息事件触发");
-        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { 
-          console.log("[梦晏晨] 聊天切换事件", args);
-        });
+        bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
+        bindEvent(context.event_types.USER_MESSAGE_RENDERED);
+        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { console.log("[梦晏晨] 聊天切换事件", args); });
     }
 
     // ===== 初始化入口 =====
     if (!window.__ST_IMPORT_EXPORT_MODE__) {
         $(document).ready(() => {
             console.log("[梦晏晨] 插件已启动");
-            tryInjectPanda();
+            tryInjectPanda({ settings, extension_settings, saveSettingsDebounced, PLUGIN_ID });
             bindEvents();
         });
     }
