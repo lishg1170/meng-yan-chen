@@ -48,6 +48,13 @@
     };
 
     let settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
+    // 🧼 清理未知字段（防污染）
+    for (const key of Object.keys(settings)) {
+        if (!(key in defaultSettings)) {
+            console.warn("[梦晏晨] 删除未知配置字段:", key);
+            delete settings[key];
+        }
+    }
 
     settings.regexRules.forEach(rule => { 
         if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g"); 
