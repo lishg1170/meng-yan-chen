@@ -28,7 +28,6 @@
     }
 
     // ===== 安全挂载 UI 模块 =====
-    const uiModule = await import("./ui.js");
 
     window.MengUI = {
         openMengPanel: uiModule.openMengPanel,
