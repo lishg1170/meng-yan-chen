@@ -122,8 +122,12 @@ function openMengPanel(context){
            if (!item) return;
 
            if (typeof item === "string") {
-               item = { from: item, to: "", enabled: true };
-           }
+                rules[index] = item = {
+                    from: item,
+                    to: "",
+                    enabled: true
+                };
+            }
 
            const text =
                 item.from !== undefined
@@ -272,29 +276,30 @@ function openMengPanel(context){
 
     // ===== 保存按钮 =====
     $("#meng-save").off("click").on("click",()=>{
+
         try{
 
-           settings.simpleReplacements =
-               (settings.simpleReplacements || []).filter(i => i.enabled);
-
            settings.regexRules =
-               (settings.regexRules || []).filter(i => i.enabled);
+                (settings.regexRules || []).filter(i => i.enabled !== false);
 
-           settings.contextRules =
-               (settings.contextRules || []).filter(i => i.enabled);
+            settings.contextRules =
+                (settings.contextRules || []).filter(i => i.enabled !== false);
+  
+            settings.simpleReplacements =
+                (settings.simpleReplacements || []).filter(i => i.enabled !== false);
 
-           extension_settings[PLUGIN_ID] = settings;
+            extension_settings[PLUGIN_ID] = settings;
 
-           saveSettingsDebounced();
+            saveSettingsDebounced();
 
-           alert("✧ 梦晏晨设置已保存");
+            alert("✧ 梦晏晨设置已保存");
 
-       }catch(e){
+        }catch(e){
 
-           console.error(e);
+            console.error(e);
 
-           alert("⚠️ 保存失败");
-       }
+            alert("⚠️ 保存失败");
+        }
     });
 
     // ===== 预览 & 日志 =====
@@ -307,19 +312,27 @@ function openMengPanel(context){
         if (!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
 
         let cleanedText = "";
+        let retryCount = 0;
 
         async function runPreview() {
             if (window.MengReady?.cleaner) {
-                 await window.MengReady.cleaner;
+                 await window.MengReady.cleaner.catch(err => {
+                     console.warn("[梦晏晨] cleaner预加载失败", err);
+                 });
             }
 
             if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
+                
+            if (retryCount < 3) {
 
-                if (retryCount < 3) {
+                 retryCount++;
 
-                    retryCount++;
+                 console.warn(`[梦晏晨] cleaner未就绪，重试 ${retryCount}`);
 
-                } else {
+                 return setTimeout(runPreview, 300);
+
+             }
+                 else {
 
                     alert("⚠️ MengCleaner 加载失败");
 
@@ -331,7 +344,18 @@ function openMengPanel(context){
             retryCount = 0;
 
             // 真正执行预览
-            cleanedText = window.MengCleaner.cleanText(input, settings);
+            try {
+
+                 cleanedText = await window.MengCleaner.cleanText(input, settings);
+
+             } catch(err){
+
+                 console.error("[梦晏晨] 清洗失败", err);
+
+                 alert("⚠️ 清洗执行失败");
+
+                 return;
+             }
             
             // 待确认新名字显示
             $pendingConfirm.empty();
@@ -418,13 +442,19 @@ function openMengPanel(context){
                         : {};
 
                 settings.simpleReplacements =
-                    Array.isArray(imported.simpleReplacements)
-                        ? imported.simpleReplacements
-                        : [];
+                     Array.isArray(imported.simpleReplacements)
+                         ? imported.simpleReplacements.map(i => ({
+                               enabled: true,
+                               ...i
+                       }))
+                       : [];
 
                 settings.regexRules =
                     Array.isArray(imported.regexRules)
-                        ? imported.regexRules
+                        ? imported.regexRules.map(i => ({
+                              enabled: true,
+                              ...i
+                        }))
                         : [];
 
                 // 过滤非法正则
@@ -439,9 +469,12 @@ function openMengPanel(context){
                 });
 
                 settings.contextRules =
-                    Array.isArray(imported.contextRules)
-                        ? imported.contextRules
-                        : [];
+                     Array.isArray(imported.contextRules)
+                         ? imported.contextRules.map(i => ({
+                               enabled: true,
+                               ...i
+                         }))
+                         : [];
 
                 extension_settings[PLUGIN_ID] = settings;
 
