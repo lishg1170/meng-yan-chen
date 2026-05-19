@@ -21,28 +21,6 @@
             console.warn("[梦晏晨] UI 加载失败", e);
         });
 
-    // ===== 安全注入 Panda 按钮 =====
-    function injectPandaButton(context) {
-        const target = $("#data_bank_wand_container");
-        if (!target.length) { setTimeout(() => injectPandaButton(context), 500); return; }
-        if ($("#meng-panda-btn").length) return;
-
-        const btn = $(`
-<div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;">
-<span>🐼</span><span>梦晏晨</span>
-</div>`);
-        btn.on("click", () => window.MengUI.openMengPanel?.(context));
-        target.append(btn);
-        console.log("[梦晏晨] 🐼 已成功注入");
-    }
-
-    // ===== 安全挂载 UI 模块 =====
-
-    window.MengUI = {
-        openMengPanel: uiModule.openMengPanel,
-        injectPandaButton: uiModule.injectPandaButton,
-    };
-
     const PLUGIN_ID = "meng-yan-chen";
     const context = window.SillyTavern?.getContext?.();
     const extension_settings = context?.extension_settings || {};
