@@ -1,17 +1,16 @@
+// ======================
+// 梦晏晨 UI整合版
+// ======================
+
 function openMengPanel(context) {
+    const { settings, extension_settings, saveSettingsDebounced, PLUGIN_ID } = context;
 
-    console.log("梦晏晨 UI VERSION = 777");
-
-    const {
-        settings,
-        extension_settings,
-        saveSettingsDebounced,
-        PLUGIN_ID
-    } = context;
+    console.log("🐼 梦晏晨 UI 加载");
 
     // 防止重复打开
     if ($("#meng-overlay").length) return;
 
+    // HTML主体
     const html = `
 <div id="meng-overlay"
 style="
@@ -97,13 +96,13 @@ color:white;
 border:none;
 "></textarea>
 
-<h3>⚙️ 正则清洗</h3>
+<h3>⚙️ 正则清洗 (JSON格式)</h3>
 
 <textarea
 id="meng-regex"
 style="
 width:100%;
-height:120px;
+height:200px;
 margin-bottom:18px;
 border-radius:10px;
 padding:10px;
@@ -134,89 +133,56 @@ cursor:pointer;
 
     $("body").append(html);
 
+    // 初始化文本框
     $("#meng-namefix").val(
-    Object.entries(settings.nameFixMap || {})
-        .map(([k, v]) => `${k}=${v}`)
-        .join("\n")
-);
+        Object.entries(settings.nameFixMap || {})
+            .map(([k, v]) => `${k}=${v}`)
+            .join("\n")
+    );
 
-$("#meng-simple").val(
-    (settings.simpleReplacements || [])
-        .map(item => `${item.from}=>${item.to}`)
-        .join("\n")
-);
+    $("#meng-simple").val(
+        (settings.simpleReplacements || [])
+            .map(i => `${i.from}=>${i.to}`)
+            .join("\n")
+    );
 
-$("#meng-regex").val(
-    (settings.regexRules || [])
-        .map(item => `${item.pattern}=>${item.replace}`)
-        .join("\n")
-);
+    $("#meng-regex").val(JSON.stringify(settings.regexRules || [], null, 2));
 
-    // 关闭
-    $("#meng-close").off("click").on("click", () => {
-    $("#meng-overlay").remove();
-});
+    // 关闭按钮
+    $("#meng-close").off("click").on("click", () => $("#meng-overlay").remove());
 
-    
-
-$("#meng-save").off("click").on("click", () => {
-
-    // 名字修正
-    const nameFixArr = ($("#meng-namefix").val() || "")
-        .split("\n")
-        .map(line => {
+    // 保存按钮
+    $("#meng-save").off("click").on("click", () => {
+        // 名字修正
+        const nameFixArr = ($("#meng-namefix").val() || "").split("\n").map(line => {
             const parts = line.split("=");
-            return { from: parts[0]?.trim() || "", to: parts[1]?.trim() || "" };
-        })
-        .filter(item => item.from && item.to);
+            return { from: parts[0]?.trim(), to: parts[1]?.trim() };
+        }).filter(i => i.from && i.to);
+        settings.nameFixMap = Object.fromEntries(nameFixArr.map(i => [i.from, i.to]));
 
-    settings.nameFixMap = {};
-    nameFixArr.forEach(item => { 
-        settings.nameFixMap[item.from] = item.to;
-    });
-    $("#meng-namefix").val(nameFixArr.map(item => `${item.from}=${item.to}`).join("\n"));
-
-    // 简单替换
-    const simpleArr = ($("#meng-simple").val() || "")
-        .split("\n")
-        .map(line => {
+        // 简单替换
+        const simpleArr = ($("#meng-simple").val() || "").split("\n").map(line => {
             const parts = line.split("=>");
-            return { from: parts[0]?.trim() || "", to: parts[1]?.trim() || "" };
-        })
-        .filter(item => item.from && item.to);
+            return { from: parts[0]?.trim(), to: parts[1]?.trim() };
+        }).filter(i => i.from && i.to);
+        settings.simpleReplacements = simpleArr;
 
-    settings.simpleReplacements = simpleArr;
-    $("#meng-simple").val(simpleArr.map(item => `${item.from}=>${item.to}`).join("\n"));
-
-    // 正则
-    const regexArr = ($("#meng-regex").val() || "")
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => line && line.includes("=>"))
-        .map(line => {
-            const [pattern, replace] = line.split("=>").map(s => s.trim());
-            return { pattern, replace: replace || "" };
-        })
-        .filter (item => item.pattern && item.replace);
-        
-        // 检查正则是否合法
-
-    regexArr.forEach(item => {
+        // 正则 - JSON解析
         try {
-            new RegExp(item.pattern);
+            const regexArr = JSON.parse($("#meng-regex").val() || "[]");
+            // 校验正则合法性
+            regexArr.forEach(item => {
+                try { new RegExp(item.pattern); } catch (e) { console.warn("正则有误:", item.pattern); }
+            });
+            settings.regexRules = regexArr;
         } catch (e) {
-            console.warn("正则有误:", item.pattern);
+            alert("⚠️ 正则 JSON 格式错误！");
+            return;
         }
+
+        saveSettingsDebounced();
+        alert("✧ 梦晏晨设置已保存");
     });
-   
-   settings.regexRules = regexArr;
-
-   // 更新 UI
-   $("#meng-regex").val(regexArr.map(item => `${item.pattern}=>${item.replace}`).join("\n"));
-
-    saveSettingsDebounced();
-    alert("✧ 梦晏晨设置已保存");
-});
 }
 
 // ======================
@@ -224,22 +190,9 @@ $("#meng-save").off("click").on("click", () => {
 // ======================
 
 function injectPandaButton(context) {
-
-    const target =
-        $("#data_bank_wand_container");
-
-    if (!target.length) {
-
-        setTimeout(
-            () => injectPandaButton(context),
-            1000
-        );
-
-        return;
-    }
-
-    if ($("#meng-panda-btn").length)
-        return;
+    const target = $("#data_bank_wand_container");
+    if (!target.length) { setTimeout(() => injectPandaButton(context), 1000); return; }
+    if ($("#meng-panda-btn").length) return;
 
     const btn = $(`
 <div
@@ -260,35 +213,14 @@ margin-top:4px;
 </div>
 `);
 
-    btn.on("click", () => {
-
-        try {
-
-            openMengPanel(context);
-
-        } catch(err) {
-
-            console.error(
-                "[梦晏晨] UI打开失败",
-                err
-            );
-
-        }
-
-    });
-
+    btn.on("click", () => openMengPanel(context));
     target.append(btn);
 
-    console.log(
-        "[梦晏晨] 🐼 已成功注入"
-    );
+    console.log("[梦晏晨] 🐼 已成功注入");
 }
 
 // ======================
 // 暴露 API
 // ======================
 
-window.MengUI = {
-    openMengPanel,
-    injectPandaButton
-};
+window.MengUI = { openMengPanel, injectPandaButton };
