@@ -1,10 +1,11 @@
 function openMengPanel(context){
+    const {settings,extension_settings,saveSettingsDebounced,PLUGIN_ID} = context;
+    
     settings.nameFixMap = settings.nameFixMap || {};
     settings.simpleReplacements = settings.simpleReplacements || [];
     settings.regexRules = settings.regexRules || [];
     settings.contextRules = settings.contextRules || [];
-
-    const {settings,extension_settings,saveSettingsDebounced,PLUGIN_ID} = context;
+    
     if($("#meng-overlay").length) return;
 
     const html = `
