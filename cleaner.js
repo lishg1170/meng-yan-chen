@@ -11,8 +11,10 @@ window.MengCleaner = {
         console.log("[梦晏晨] === 清洗开始 ===");
         console.log("[梦晏晨] 原文本:", text);
 
-        // ===== 全局挂载辅助数组 =====
-        window.MengYanChen = window.MengYanChen || {};
+        // ⚠️ 安全挂载辅助数组
+        if(!window.MengYanChen) window.MengYanChen = {};
+        if(!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
+        if(!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
         const { pendingConfirmations, correctNames } = window.MengYanChen;
 
         //
