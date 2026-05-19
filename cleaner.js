@@ -38,11 +38,19 @@ const MengCleaner = {
         //
         // 1️⃣ 名字修正
         //
-        for (const [from, to] of Object.entries(settings.nameFixMap || {})) {
-            if (cleaned.includes(from)) {
-                console.log(`[梦晏晨] 名字修正: "${from}" → "${to}"`);
+        for (const rule of settings.nameFixRules || []) {
+
+            if (rule.enabled === false) continue;
+
+            if (cleaned.includes(rule.from)) {
+
+                console.log(
+                    `[梦晏晨] 名字修正: "${rule.from}" → "${rule.to}"`
+                );
+
             }
-            cleaned = cleaned.replaceAll(from, to);
+
+            cleaned = cleaned.replaceAll(rule.from, rule.to);
         }
 
         //
