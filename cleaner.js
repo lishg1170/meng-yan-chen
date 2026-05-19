@@ -1,7 +1,7 @@
 // ======================
 // 优化版 MengCleaner
 // ======================
-window.MengCleaner = {
+const MengCleaner = {
     cleanText(text, settings) {
         if (!text) return text;
 
@@ -97,3 +97,4 @@ window.MengCleaner = {
         return cleaned.trim();
     }
 };
+export { MengCleaner };
