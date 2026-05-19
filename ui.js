@@ -316,6 +316,4 @@ function injectPandaButton(context){
 }
 
 // ===== 暴露 API =====
-export function openMengPanel(context) { ... }
-
-export function injectPandaButton(context) { ... }
+export { openMengPanel, injectPandaButton };
