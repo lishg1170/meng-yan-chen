@@ -4,9 +4,18 @@ function openMengPanel(context){
     if (!settings.nameFixMap || typeof settings.nameFixMap !== "object") {
         settings.nameFixMap = {};
     }
-    settings.simpleReplacements = settings.simpleReplacements || [];
-    settings.regexRules = settings.regexRules || [];
-    settings.contextRules = settings.contextRules || [];
+    
+    settings.simpleReplacements = Array.isArray(settings.simpleReplacements)
+        ? settings.simpleReplacements
+        : [];
+
+    settings.regexRules = Array.isArray(settings.regexRules)
+        ? settings.regexRules
+        : [];
+
+    settings.contextRules = Array.isArray(settings.contextRules)
+        ? settings.contextRules
+        : [];
     
     if($("#meng-overlay").length) return;
 
@@ -63,6 +72,14 @@ function openMengPanel(context){
 <button id="meng-export" style="width:48%;margin-right:4%;padding:12px;border:none;border-radius:12px;background:#10b981;color:white;font-size:1rem;font-weight:bold;cursor:pointer;">📤 导出规则</button>
 <button id="meng-import" style="width:48%;padding:12px;border:none;border-radius:12px;background:#3b82f6;color:white;font-size:1rem;font-weight:bold;cursor:pointer;">📥 导入规则</button>
 <button id="meng-save" style="width:100%;padding:14px;border:none;border-radius:12px;background:#8b5cf6;color:white;font-size:1rem;font-weight:bold;cursor:pointer;margin-top:12px;">💾 保存设置</button>
+
+<input 
+    type="file" 
+    id="meng-import-file" 
+    accept=".json" 
+    style="display:none;"
+>
+
 </div></div>
 `;
 
@@ -237,7 +254,11 @@ function openMengPanel(context){
             </div> 
             `);
             row.find("button").on("click", () => { 
-                window.MengYanChen.correctNames.add(i.correct);            window.MengYanChen.pendingConfirmations.splice(window.MengYanChen.pendingConfirmations.indexOf(i), 1);
+                window.MengYanChen.correctNames.add(i.correct);    
+                        window.MengYanChen.pendingConfirmations.splice(
+                            window.MengYanChen.pendingConfirmations.indexOf(i), 
+                             1
+                         );
                 row.remove(); 
             });
             $pendingConfirm.append(row);
@@ -273,74 +294,85 @@ function openMengPanel(context){
         alert("📂 规则已导出，可以备份或在其他设备导入");
     });
 
-    $("#meng-import").off("click").on("click",()=>{
-        const input=document.createElement('input');
-        input.type='file'; input.accept='.json';
-        input.onchange=e=>{
-            const file = e.target.files?.[0];
-             if (!file) return;
-            const reader=new FileReader();
-            reader.onload=()=>{
-                try{
-                    const imported = JSON.parse(reader.result);
+    $("#meng-import").off("click").on("click", () => {
+    $("#meng-import-file").click();
+});
 
-                     if (typeof imported !== "object" || imported === null) {
-                         throw new Error("无效配置");
-                     }
+    $("#meng-import-file").off("change").on("change", e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-                     settings.nameFixMap = typeof imported.nameFixMap === "object"
-                         ? imported.nameFixMap
-                         : {};
+        const reader = new FileReader();
 
-                     settings.simpleReplacements = Array.isArray(imported.simpleReplacements)
-                         ? imported.simpleReplacements
-                         : [];
+        reader.onload = () => {
+            try {
+                const imported = JSON.parse(reader.result);
 
-                     settings.regexRules = Array.isArray(imported.regexRules)
-                         ? imported.regexRules
-                         : [];
-                        
-                      settings.regexRules = settings.regexRules.filter(rule => {
-                          try {
-                              new RegExp(rule.pattern);
-                              return true;
-                          } catch {
-                              console.warn("[梦晏晨] 非法正则已跳过:", rule.pattern);
-                              return false;
-                          }
-                      });
+                if (typeof imported !== "object" || imported === null) {
+                    throw new Error("无效配置");
+                }
 
-                     settings.contextRules = Array.isArray(imported.contextRules)
-                         ? imported.contextRules
-                         : [];
+                settings.nameFixMap =
+                    typeof imported.nameFixMap === "object"
+                        ? imported.nameFixMap
+                        : {};
 
-                     settings.nameFixMap = imported.nameFixMap || {};
-                     settings.simpleReplacements = imported.simpleReplacements || [];
-                     settings.regexRules = imported.regexRules || [];
-                     settings.contextRules = imported.contextRules || [];
-                    extension_settings[PLUGIN_ID]=settings;
-                    saveSettingsDebounced();
-                    alert('📥 导入成功！');
-                    renderToggle(
-                        "#meng-namefix-container",
-                        Object.entries(settings.nameFixMap || {}).map(([from, to]) => ({
-                            from,
-                            to,
-                            enabled: true,
-                            desc: '导入规则'
-                        }))
-                    );
+                settings.simpleReplacements =
+                    Array.isArray(imported.simpleReplacements)
+                        ? imported.simpleReplacements
+                        : [];
 
-                    renderToggle("#meng-simple-container", settings.simpleReplacements, true);
-                    renderToggle("#meng-regex-container", settings.regexRules);
-                    renderToggle("#meng-context-container", settings.contextRules);
-                }catch{alert('⚠️ 文件格式错误');}
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-        alert("📥 请选择之前导出的规则 JSON 文件进行导入");
-    });
+                settings.regexRules =
+                    Array.isArray(imported.regexRules)
+                        ? imported.regexRules
+                        : [];
+
+                // 过滤非法正则
+                settings.regexRules = settings.regexRules.filter(rule => {
+                    try {
+                        new RegExp(rule.pattern);
+                        return true;
+                    } catch {
+                        console.warn("[梦晏晨] 非法正则已跳过:", rule.pattern);
+                        return false;
+                    }
+                });
+
+                settings.contextRules =
+                    Array.isArray(imported.contextRules)
+                        ? imported.contextRules
+                        : [];
+
+                extension_settings[PLUGIN_ID] = settings;
+
+                saveSettingsDebounced();
+
+                renderToggle(
+                    "#meng-namefix-container",
+                    Object.entries(settings.nameFixMap || {}).map(([from, to]) => ({
+                        from,
+                        to,
+                        enabled: true,
+                        desc: '导入规则'
+                    }))
+                 );
+
+                 renderToggle("#meng-simple-container", settings.simpleReplacements, true);
+                 renderToggle("#meng-regex-container", settings.regexRules);
+                 renderToggle("#meng-context-container", settings.contextRules);
+
+                 alert("📥 导入成功！");
+             } catch (err) {
+                 console.error("[梦晏晨] 导入失败:", err);
+                 alert("⚠️ 文件格式错误");
+             }
+         };
+
+         reader.readAsText(file);
+
+         // 清空 input，避免重复选择同一文件不触发 change
+         e.target.value = "";
+     });
 }
 
 // ===== 注入按钮 =====
