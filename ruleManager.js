@@ -1,84 +1,76 @@
 // ==============================
-// 规则管理完整模板
+// ruleManager.js
 // ==============================
 
-(async () => {
-    console.log("[梦晏晨] 插件初始化规则管理");
+const STORAGE_KEY = "MengRules"; // 存储在 localStorage 的 key
 
-    // ===== 插件 ID 和上下文 =====
-    const PLUGIN_ID = "meng-yan-chen";
-    const context = window.SillyTavern?.getContext?.();
-    const extension_settings = context?.extension_settings || {};
-    const saveSettingsDebounced = context?.saveSettingsDebounced || (() => {});
-
-    // ===== 默认规则（防止报错） =====
-    window.MengRules = [];
-    window.MengRulesSave = (newRules) => {
-        window.MengRules = newRules;
-        console.log("[Meng] 已保存规则到全局", window.MengRules);
-
-        // 尝试同步写入 RuleManager
-        if (window.RuleManager) {
-            try {
-                window.RuleManager.saveRules(newRules);
-                console.log("[Meng] 已保存规则到 RuleManager");
-            } catch (e) {
-                console.warn("[Meng] RuleManager 保存规则失败", e);
-            }
-        }
-
-        // 尝试写入 localStorage
+const RuleManager = {
+    /**
+     * 加载规则
+     * @returns {Array} 规则数组
+     */
+    loadRules() {
         try {
-            localStorage.setItem("MengRules", JSON.stringify(newRules));
-            console.log("[Meng] 已保存规则到 localStorage");
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return []; // 没有存储返回空数组
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+            return parsed;
         } catch (e) {
-            console.warn("[Meng] localStorage 保存规则失败", e);
+            console.error("[Meng][RuleManager] 读取规则失败:", e);
+            return [];
         }
-    };
+    },
 
-    // ===== 异步导入 RuleManager（如果有） =====
-    try {
-        const RuleManagerModule = await import("./ruleManager.js");
-        const RuleManager = RuleManagerModule.default;
-        window.RuleManager = RuleManager;
-
-        // 读取规则
+    /**
+     * 保存规则
+     * @param {Array} rules 规则数组
+     */
+    saveRules(rules) {
         try {
-            const loadedRules = RuleManager.loadRules();
-            window.MengRules = loadedRules || window.MengRules;
-            console.log("[Meng] 从 RuleManager 加载规则", window.MengRules);
+            if (!Array.isArray(rules)) throw new Error("rules必须是数组");
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+            console.log("[Meng][RuleManager] 规则已保存:", rules);
         } catch (e) {
-            console.warn("[Meng] RuleManager 读取规则失败", e);
+            console.error("[Meng][RuleManager] 保存规则失败:", e);
         }
-    } catch (e) {
-        console.warn("[Meng] RuleManager 模块加载失败", e);
+    },
 
-        // 如果没有 RuleManager，则尝试 localStorage
-        try {
-            const stored = localStorage.getItem("MengRules");
-            if (stored) {
-                window.MengRules = JSON.parse(stored);
-                console.log("[Meng] 从 localStorage 加载规则", window.MengRules);
-            } else {
-                console.log("[Meng] localStorage 没有规则，使用默认空数组");
-            }
-        } catch (e2) {
-            console.warn("[Meng] localStorage 读取规则失败", e2);
-        }
+    /**
+     * 添加新规则
+     * @param {Object} rule 单条规则对象
+     */
+    addRule(rule) {
+        const rules = this.loadRules();
+        rules.push(rule);
+        this.saveRules(rules);
+    },
+
+    /**
+     * 删除规则
+     * @param {Function} filterFn 筛选函数，返回true的保留，false的删除
+     */
+    removeRule(filterFn) {
+        const rules = this.loadRules();
+        const newRules = rules.filter(filterFn);
+        this.saveRules(newRules);
+    },
+
+    /**
+     * 清空所有规则
+     */
+    clearRules() {
+        this.saveRules([]);
     }
+};
 
-    // ===== 调试辅助函数 =====
-    window.printMengRules = () => {
-        console.log("[Meng] 当前规则", window.MengRules);
-    };
-    window.addMengRule = (rule) => {
-        window.MengRules.push(rule);
-        window.MengRulesSave(window.MengRules);
-    };
-    window.clearMengRules = () => {
-        window.MengRules = [];
-        window.MengRulesSave(window.MengRules);
-    };
+// ==============================
+// 挂全局
+// ==============================
+window.MengRules = RuleManager.loadRules();
+window.MengRulesSave = (newRules) => {
+    window.MengRules = newRules;
+    RuleManager.saveRules(newRules);
+};
 
-    console.log("[梦晏晨] 规则管理初始化完成");
-})();
+export default RuleManager;
