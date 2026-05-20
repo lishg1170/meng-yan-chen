@@ -1,6 +1,6 @@
 // ======================
 // 梦晏晨 Ultimate Index
-// index.js (超时防卡死版)
+// index.js (localStorage 持久化最终版)
 // ======================
 
 console.log("[梦晏晨] Ultimate Index 启动中...");
@@ -89,44 +89,54 @@ const defaultSettings = {
 };
 let settings = structuredClone(defaultSettings);
 
-// ===== 设置加载 =====
+// ===== 设置加载（优先 localStorage） =====
 async function loadSettings() {
+    // 1. 优先尝试从 localStorage 恢复
+    const local = localStorage.getItem("meng_rule_backup");
+    if (local) {
+        try {
+            const parsed = JSON.parse(local);
+            if (parsed && typeof parsed === "object") {
+                settings = Object.assign({}, defaultSettings, parsed);
+                mengLog("📂 已从本地存储读取设置");
+                return true;
+            }
+        } catch (e) {
+            mengLog("⚠️ 本地存储数据损坏，忽略");
+        }
+    }
+
+    // 2. 其次尝试 ST 配置
     try {
         const ctx = getSTContext();
-        if (!ctx) return false;
-        ctx.extension_settings = ctx.extension_settings || {};
-        const saved = ctx.extension_settings[PLUGIN_ID];
-        if (saved && typeof saved === "object") {
-            settings = Object.assign({}, defaultSettings, saved);
-            mengLog("📂 已从ST配置读取设置");
-            // 安全修复
-            settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
-            settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
-            settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
-            settings.contextRules = Array.isArray(settings.contextRules) ? settings.contextRules : [];
-            // 正则预编译
-            for (const r of settings.regexRules) {
-                try { if (!r._regex && r.pattern) r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
+        if (ctx) {
+            ctx.extension_settings = ctx.extension_settings || {};
+            const saved = ctx.extension_settings[PLUGIN_ID];
+            if (saved && typeof saved === "object") {
+                settings = Object.assign({}, defaultSettings, saved);
+                mengLog("📂 已从ST配置读取设置");
+                // 同步到 localStorage
+                localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
+                return true;
             }
-            return true;
         }
-        return false;
     } catch (e) {
-        console.error(e);
-        mengLog("💥 设置加载崩溃");
-        return false;
+        mengLog("⚠️ 读取ST配置失败");
     }
+
+    // 3. 都没读到则返回 false
+    return false;
 }
 
-// 关键修复：等待 ST 配置加载，但最多等 5 秒，超时直接使用默认设置
+// 等待设置就绪（最多等待 5 秒，超时后使用默认）
 async function waitForSettingsLoad() {
     let loaded = await loadSettings();
     if (loaded) return;
+
     mengLog("⏳ 等待ST配置加载（最多5秒）...");
     await new Promise(resolve => {
         const timeout = setTimeout(() => {
-            mengLog("⏰ 等待超时，使用默认设置");
-            settings = structuredClone(defaultSettings);
+            mengLog("⏰ 等待超时，尝试再次读取本地存储");
             resolve();
         }, 5000);
         const check = () => {
@@ -140,27 +150,33 @@ async function waitForSettingsLoad() {
         };
         check();
     });
-    // 超时后或检测到配置后，再次尝试加载（如果超时则使用默认）
-    if (!loaded) {
-        await loadSettings();
-        if (!settings || Object.keys(settings).length === 0) {
-            settings = structuredClone(defaultSettings);
-        }
+
+    // 再次尝试加载（loadSettings 会先查 localStorage，再查 ST）
+    await loadSettings();
+    // 若仍为空，则使用默认设置
+    if (!settings || Object.keys(settings).length === 0) {
+        settings = structuredClone(defaultSettings);
+        mengLog("🆕 使用默认设置");
     }
 }
 
-// ===== 设置保存 =====
+// ===== 设置保存（同时写 ST 和 localStorage） =====
 async function saveSettings() {
     try {
-        const ctx = getSTContext();
-        if (!ctx) return false;
-        ctx.extension_settings = ctx.extension_settings || {};
-        ctx.extension_settings[PLUGIN_ID] = structuredClone(settings);
-        if (typeof ctx.saveSettingsDebounced === "function") {
-            ctx.saveSettingsDebounced();
-        }
+        // 写入 localStorage（主存储）
         localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
-        mengLog("💾 设置已持久化保存");
+        mengLog("💾 设置已保存到本地存储");
+
+        // 尝试写入 ST 配置（备份）
+        const ctx = getSTContext();
+        if (ctx) {
+            ctx.extension_settings = ctx.extension_settings || {};
+            ctx.extension_settings[PLUGIN_ID] = structuredClone(settings);
+            if (typeof ctx.saveSettingsDebounced === "function") {
+                ctx.saveSettingsDebounced();
+            }
+            mengLog("💾 设置已同步到ST配置");
+        }
         return true;
     } catch (err) {
         console.error(err);
@@ -177,7 +193,7 @@ async function waitModulesReady() {
     mengLog("✅ 核心模块就绪");
 }
 
-// ===== 消息清洗（保持不变） =====
+// ===== 消息清洗 =====
 function isAlreadyCleaned(msg) { return msg?._meng_cleaned || window.MengYanChen?.messageCache?.has(msg); }
 function markCleaned(msg) { if (msg) { msg._meng_cleaned = true; try { window.MengYanChen?.messageCache?.add(msg); } catch {} } }
 function getMessageField(msg) { return typeof msg?.mes === "string" ? "mes" : typeof msg?.content === "string" ? "content" : null; }
@@ -230,7 +246,7 @@ function bindMessageEvents() {
     mengLog("🎧 消息监听绑定");
 }
 
-// ===== Panda 注入（增加 settings 就绪检查） =====
+// ===== Panda 注入 =====
 async function injectPandaButton() {
     if (!settings || Object.keys(settings).length === 0) {
         mengLog("⏳ settings 未就绪，延迟注入 Panda");
@@ -261,7 +277,7 @@ function createFloatingLogButton() {
         await loadDependencies();
         await waitModulesReady();
 
-        // 等待配置，最多5秒，之后必定有 settings（默认或已存）
+        // 等待配置（优先 localStorage，最多5秒，超时用默认）
         await waitForSettingsLoad();
 
         // 初始化全局状态
