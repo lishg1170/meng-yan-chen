@@ -103,6 +103,38 @@ const MengCleaner = {
         .replace(/^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？]?$/gm, "")
         // “的”修复
         .replace(/(?<=\S)的([，。])/g, "$1");
+        
+        // ===== 基础标点与残句修复 =====
+
+        cleaned = cleaned
+
+            .replace(/，\s*，/g, "，")
+
+            .replace(/。\s*。/g, "。")
+
+            .replace(/：\s*：/g, "：")
+
+            .replace(/，\s*。/g, "。")
+
+            .replace(/。\s*，/g, "，")
+
+            .replace(/,\s*\./g, ".")
+
+            .replace(/\.\s*,/g, ",")
+
+            .replace(/[，,]{2,}/g, "，")
+
+            .replace(/[。\.]{2,}/g, "。")
+
+            .replace(/[！!]{2,}/g, "！")
+
+            .replace(/[？?]{2,}/g, "？")
+
+            .replace(/^[，。！？；：]+/gm, "")
+
+            .replace(/[，。！？；：]\s*[，。！？；：]+/g, "。")
+
+            .replace(/(?<=\S)的([，。])/g, "$1");
 
         // ===== 分段整理 =====
         cleaned = cleaned
