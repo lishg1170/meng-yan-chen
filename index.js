@@ -29,20 +29,18 @@
     
     // ===== 永久规则管理 =====
     import("./ruleManager.js").then(RuleManagerModule => {
-        const RuleManager = RuleManagerModule.default;  // ✅ 优化了default
-        // 自动加载规则
+        const RuleManager = RuleManagerModule.default; // ✅ 必须这样
         window.MengRules = RuleManager.loadRules();
-        // 暴露保存方法给 UI 使用
-        window.MengRulesSave = (newSettings) => {
-            window.MengRules = newSettings;
-            RuleManager.saveRules(newSettings);
+        window.MengRulesSave = (newRules) => {
+            window.MengRules = newRules;
+            RuleManager.saveRules(newRules);
         };
         console.log("[梦晏晨] 永久规则已加载", window.MengRules);
     }).catch(e => {
         console.warn("[梦晏晨] RuleManager 加载失败", e);
     });
 
-  })();
+})();
 
     // ===== 默认设置 =====
     const defaultSettings = {
