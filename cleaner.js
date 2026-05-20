@@ -134,8 +134,6 @@ const MengCleaner = {
 
             .replace(/[，。！？；：]\s*[，。！？；：]+/g, "。")
 
-            .replace(/(?<=\S)的([，。])/g, "$1");
-
         // ===== 分段整理 =====
         cleaned = cleaned
             .split(/(?<=[。！？\n])/g) // 按句号/感叹号/问号/换行拆分
