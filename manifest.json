@@ -4,11 +4,7 @@
   "description": "清理角色乱码、名字乱改和八股内容，同时前端可视化小熊猫按钮",
   "author": "lishg1170",
   "version": "3.0.0",
-  "js": [
-    "cleaner.js",
-    "ui.js",
-    "index.js"
-  ],
+  "js": "index.js",
   "loading_order": 5,
   "type": "sillytavern-extension"
 }
