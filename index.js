@@ -1,4 +1,3 @@
-// index.js
 (async () => {
     console.log("[梦晏晨] 插件加载初始化");
 
@@ -10,42 +9,52 @@
     const saveSettingsDebounced = context?.saveSettingsDebounced || (() => {});
 
     // ===== RuleManager 初始化 =====
-    let RuleManager;
+    let RuleManager, ruleManagerInstance;
     try {
         const module = await import("./RuleManager.js");
-        RuleManager = module.default || module.RuleManager;
+        RuleManager = module?.default || module.RuleManager;
         if (!RuleManager) throw new Error("RuleManager 导出异常");
         console.log("[梦晏晨] RuleManager 导入成功 ✅");
+
+        ruleManagerInstance = new RuleManager();
+        window.MengRules = await ruleManagerInstance.loadRules();
+        window.MengRulesSave = (newRules) => {
+            window.MengRules = newRules;
+            ruleManagerInstance.saveRules(newRules);
+        };
+        console.log("[梦晏晨] 永久规则已加载", window.MengRules);
     } catch (err) {
         console.warn("[梦晏晨] RuleManager 未加载！此时保存规则无效", err);
         window.MengRules = [];
         window.MengRulesSave = () => {};
     }
 
-    if (RuleManager) {
-        window.MengRules = await RuleManager.loadRules();
-        window.MengRulesSave = (newRules) => {
-            window.MengRules = newRules;
-            RuleManager.saveRules(newRules);
-        };
-        console.log("[梦晏晨] 永久规则已加载", window.MengRules);
-    }
-
-    // ===== 异步加载 Cleaner 和 UI =====
-    let cleanerPromise = import("./MengCleaner.js")
-        .then(m => {
-            window.MengCleaner = m.MengCleaner;
+    // ===== 异步加载 Cleaner =====
+    window.MengCleaner = null;
+    const cleanerPromise = (async () => {
+        try {
+            const module = await import("./MengCleaner.js");
+            const CleanerClass = module?.MengCleaner;
+            if (!CleanerClass) throw new Error("MengCleaner 导出异常");
+            window.MengCleaner = new CleanerClass(ruleManagerInstance);
+            await window.MengCleaner.init();
             console.log("[梦晏晨] MengCleaner 加载完成 ✅");
-            return window.MengCleaner?.init?.();
-        })
-        .catch(e => console.error("[梦晏晨] MengCleaner加载失败 ❌", e));
+        } catch (e) {
+            console.error("[梦晏晨] MengCleaner 加载失败 ❌", e);
+        }
+    })();
 
-    let uiPromise = import("./ui.js")
-        .then(m => {
-            window.MengUI = m;
+    // ===== 异步加载 UI =====
+    window.MengUI = {};
+    const uiPromise = (async () => {
+        try {
+            const uiModule = await import("./ui.js");
+            window.MengUI = uiModule || {};
             console.log("[梦晏晨] UI 加载完成 ✅");
-        })
-        .catch(e => console.warn("[梦晏晨] UI加载失败 ❌", e));
+        } catch (e) {
+            console.warn("[梦晏晨] UI 加载失败 ❌", e);
+        }
+    })();
 
     // ===== 默认设置 =====
     const defaultSettings = {
@@ -57,11 +66,8 @@
         regexRules: [],
         contextRules: []
     };
-
-    let settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
-    for (const key of Object.keys(settings)) {
-        if (!(key in defaultSettings)) delete settings[key];
-    }
+    const settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
+    for (const key of Object.keys(settings)) if (!(key in defaultSettings)) delete settings[key];
     extension_settings[PLUGIN_ID] = settings;
 
     // ===== 全局管理 pendingConfirmations / correctNames =====
@@ -71,10 +77,7 @@
 
     // ===== 消息队列 =====
     window.MengQueue = window.MengQueue || [];
-
-    function enqueueMessage(msg, id) {
-        window.MengQueue.push({ msg, id });
-    }
+    function enqueueMessage(msg, id) { window.MengQueue.push({ msg, id }); }
 
     async function processMessage(msg, messageId) {
         if (!window.MengCleaner || !msg || (!msg.mes && !msg.content) || msg._meng_cleaned) return;
@@ -131,24 +134,24 @@
 
     // ===== 绑定消息事件 =====
     function bindEvents() {
-        const context = window.SillyTavern?.getContext?.();
-        if (!context?.eventSource) { setTimeout(bindEvents, 500); return; }
-        if (context._meng_bound) return;
-        context._meng_bound = true;
+        const ctx = window.SillyTavern?.getContext?.();
+        if (!ctx?.eventSource) { setTimeout(bindEvents, 500); return; }
+        if (ctx._meng_bound) return;
+        ctx._meng_bound = true;
 
         console.log("[梦晏晨] 开始监听消息");
 
         const bindEvent = (eventType) => {
-            context.eventSource.on(eventType, (...args) => {
+            ctx.eventSource.on(eventType, (...args) => {
                 const messageId = Number(args?.[0]);
-                const msg = context.chat?.[messageId];
+                const msg = ctx.chat?.[messageId];
                 if (msg) enqueueMessage(msg, messageId);
             });
         };
-        bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
-        bindEvent(context.event_types.USER_MESSAGE_RENDERED);
+        bindEvent(ctx.event_types.CHARACTER_MESSAGE_RENDERED);
+        bindEvent(ctx.event_types.USER_MESSAGE_RENDERED);
 
-        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => {
+        ctx.eventSource.on(ctx.event_types.CHAT_CHANGED, (...args) => {
             console.log("[梦晏晨] 聊天切换事件", args);
         });
     }
@@ -162,6 +165,7 @@
         });
     }
 
+    // ===== 等待所有模块加载完成 =====
     await Promise.all([cleanerPromise, uiPromise]);
     console.log("[梦晏晨] 插件初始化完成 ✅");
 })();
