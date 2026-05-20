@@ -252,12 +252,30 @@ function createFloatingLogButton() {
     $("body").append(btn);
 }
 
-// ===== 最终启动 =====
+// ===== 最终启动（监听ST配置加载完成再读设置） =====
 (async () => {
     try {
         mengLog("🌿 开始执行 index.js");
         await loadDependencies();
         await waitModulesReady();
+
+        // 等待ST配置加载完成再读取设置
+        const ctx = getSTContext();
+        if (ctx && !ctx.extension_settings?.[PLUGIN_ID]) {
+            // 还没有该插件的配置，等待ST广播 extension_settings_loaded
+            await new Promise(resolve => {
+                const check = () => {
+                    const c = getSTContext();
+                    if (c?.extension_settings?.[PLUGIN_ID]) {
+                        resolve();
+                    } else {
+                        setTimeout(check, 300);
+                    }
+                };
+                check();
+            });
+        }
+
         await preInit();
 
         if (window.MengRuleManager?.registerUpdateCallback) {
