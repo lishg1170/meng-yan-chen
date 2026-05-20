@@ -1,6 +1,6 @@
-// ==========================
-// 梦晏晨CleanerCache cleaner.js
-// ===========================
+// ======================
+// 梦晏晨 Cleaner Cache
+// ======================
 
 const MENG_CACHE = new Map();
 const MAX_CACHE_SIZE = 500;
@@ -59,7 +59,7 @@ window.MengRuntime.cleanerLoaded = false;
 window.MengRuntime.cleanerWorking = false;
 window.MengRuntime.lastCleanTime = 0;
 
-// ===== 日志函数（条件定义，避免覆盖全局） =====
+// 日志（避免覆盖 index.js 的定义）
 window.mengLog = window.mengLog || function(message, type = "log") {
     const time = new Date().toLocaleTimeString();
     const finalMsg = `🕒 [${time}] ${message}`;
@@ -73,7 +73,6 @@ window.mengLog = window.mengLog || function(message, type = "log") {
     console[type]("[梦晏晨 Cleaner]", message);
 };
 
-// ===== Toast（条件定义） =====
 window.mengToast = window.mengToast || function(msg) {
     try {
         if (window.toastr) toastr.success(msg);
@@ -84,22 +83,21 @@ window.mengToast = window.mengToast || function(msg) {
     window.mengLog(msg);
 };
 
-// ===== 安全正则转义 =====
+// 安全正则转义
 function escapeRegExp(str = "") {
     return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ===== 安全截断文本（避免代理对截断） =====
+// 安全截断（避免代理对截断）
 function safeSliceText(text, limit = 500000) {
     if (!text) return "";
-    // 使用 Array.from 安全计算实际码点
     const chars = Array.from(text);
     if (chars.length <= limit) return text;
     window.mengLog(`⚠️ 文本过长，已截断 (原${chars.length}字符)`);
     return chars.slice(0, limit).join('');
 }
 
-// ===== 白名单 =====
+// 白名单
 const WHITELIST = new Set([
     "{{user}}", "{{char}}", "<USER>", "<BOT>", "[SYSTEM]", "[INST]",
     "</s>", "<s>", "```", "json", "markdown",
@@ -124,7 +122,7 @@ function restoreWhitelist(text, map = {}) {
     return text;
 }
 
-// ===== 变量保护 =====
+// 变量保护
 function protectVariables(text) {
     const variableMap = {};
     let index = 0;
@@ -144,17 +142,15 @@ function restoreVariables(text, variableMap = {}) {
     return text;
 }
 
-// ===== 安全 base64（支持 Unicode） =====
+// 安全 base64（支持 Unicode）
 function safeBtoa(str) {
     try {
-        // 将字符串转为 UTF-8 字节数组再转 base64
         const encoder = new TextEncoder();
         const bytes = encoder.encode(str);
         const binaryString = String.fromCharCode(...bytes);
         return btoa(binaryString);
     } catch(e) {
         console.warn("[梦晏晨 Cleaner] base64编码失败", e);
-        // 降级为直接编码（可能报错）
         return btoa(unescape(encodeURIComponent(str)));
     }
 }
@@ -167,12 +163,11 @@ function safeAtob(encoded) {
         return decoder.decode(bytes);
     } catch(e) {
         console.warn("[梦晏晨 Cleaner] base64解码失败", e);
-        // 降级
         return decodeURIComponent(escape(atob(encoded)));
     }
 }
 
-// ===== 主 Cleaner 对象 =====
+// 主 Cleaner 对象
 window.MengCleaner = {
     version: "Ultimate v3",
 
@@ -180,33 +175,31 @@ window.MengCleaner = {
         try {
             if (!text) return text;
 
-            // ===== 缓存检查 =====
+            // 缓存检查
             const cached = getCache(text);
             if (cached !== null) return cached;
 
-            // ===== 防止重入 =====
+            // 防止重入
             if (window.MengRuntime.cleanerWorking) {
                 window.mengLog("⚠️ Cleaner 正在运行，跳过重复调用");
                 return text;
             }
             window.MengRuntime.cleanerWorking = true;
 
-            // ===== 文本保护 =====
+            // 文本保护
             text = safeSliceText(String(text));
 
-            // ===== 白名单保护 =====
+            // 白名单保护
             const whiteData = protectWhitelist(text);
             text = whiteData.text;
 
-            // ===== 变量保护 =====
+            // 变量保护
             const varData = protectVariables(text);
             text = varData.text;
 
             window.mengLog("🧠 开始执行文本清洗");
 
-            // ======================
             // 规则初始化
-            // ======================
             settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
             settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
             settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
@@ -214,7 +207,7 @@ window.MengCleaner = {
 
             let replaceCount = 0;
 
-            // ===== 名字修正 =====
+            // 名字修正
             for (const rule of settings.nameFixRules) {
                 try {
                     if (!rule || !rule.enabled || !rule.from || !rule.to) continue;
@@ -232,7 +225,7 @@ window.MengCleaner = {
                 }
             }
 
-            // ===== 简单替换 =====
+            // 简单替换
             for (const rule of settings.simpleReplacements) {
                 try {
                     if (!rule || !rule.enabled || !rule.from) continue;
@@ -250,7 +243,7 @@ window.MengCleaner = {
                 }
             }
 
-            // ===== Context 删除 =====
+            // Context 删除
             for (const rule of settings.contextRules) {
                 try {
                     if (!rule || !rule.enabled || !rule.pattern) continue;
@@ -268,7 +261,7 @@ window.MengCleaner = {
                 }
             }
 
-            // ===== 正则规则（使用预编译缓存） =====
+            // 正则规则（使用预编译缓存）
             for (const rule of settings.regexRules) {
                 try {
                     if (!rule || !rule.enabled || !rule.pattern) continue;
@@ -294,9 +287,7 @@ window.MengCleaner = {
                 }
             }
 
-            // ======================
             // AI 名字学习系统
-            // ======================
             window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set();
             window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
 
@@ -323,9 +314,7 @@ window.MengCleaner = {
                 }
             }
 
-            // ======================
             // AI 防误伤系统
-            // ======================
             text = text.replace(/([。！？,\.\?!]){3,}/g, "$1");
             text = text.replace(/[ \t]{4,}/g, " ");
             text = text.replace(/\n{4,}/g, "\n\n");
@@ -334,17 +323,13 @@ window.MengCleaner = {
             text = text.replace(/\bundefined\b/g, "");
             text = text.replace(/\bnull\b/g, "");
 
-            // ======================
-            // URL / Email 保护（安全 base64）
-            // ======================
+            // URL / Email 保护
             text = text.replace(/(https?:\/\/[^\s]+)/g, m => `__MENG_URL__${safeBtoa(m)}__`);
             text = text.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+)/g, m => `__MENG_EMAIL__${safeBtoa(m)}__`);
 
             window.mengLog(`✨ 当前累计规则命中: ${replaceCount}`);
 
-            // ======================
             // 恢复 URL / Email
-            // ======================
             text = text.replace(/__MENG_URL__(.*?)__/g, (_, encoded) => {
                 try { return safeAtob(encoded); } catch { return ""; }
             });
@@ -352,20 +337,18 @@ window.MengCleaner = {
                 try { return safeAtob(encoded); } catch { return ""; }
             });
 
-            // ===== 变量恢复 =====
+            // 变量恢复
             text = restoreVariables(text, varData.variableMap);
-            // ===== 白名单恢复 =====
+            // 白名单恢复
             text = restoreWhitelist(text, whiteData.map);
 
-            // ======================
             // 二次安全修复
-            // ======================
             text = text.normalize("NFC");
             text = text.replace(/^\uFEFF/, "");
             text = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
             text = text.replace(/\s{20,}/g, " ");
 
-            // ===== 结果检查 =====
+            // 结果检查
             if (typeof text !== "string") {
                 window.mengLog("⚠️ cleanText 输出异常，已回退");
                 text = String(text || "");
@@ -373,15 +356,16 @@ window.MengCleaner = {
             if (!text.trim()) {
                 window.mengLog("⚠️ 清洗后文本为空，已阻止覆盖");
                 window.MengRuntime.cleanerWorking = false;
-                return "";  // 不缓存空结果
+                return "";
             }
 
-            // ===== 写入缓存 =====
-            setCache(text, text);  // 缓存清洗结果（注意：key 是原始文本，但这里 text 已经是清洗后的，原始输入在原变量中已丢失，需调整）
-            // 修正：应使用原始输入字符串作为缓存键
-            const originalInput = arguments[0]; // 保存原始输入引用
-            if (originalInput && originalInput !== text) {
-                setCache(originalInput, text);
+            // 写入缓存（用原始输入作为 key）
+            const originalInput = text; // 注意：这里 text 已经是清洗后的，原始输入需从参数获取
+            // 修正：从调用时传入的原始值来缓存
+            if (arguments[0] && arguments[0] !== text) {
+                setCache(arguments[0], text);
+            } else {
+                setCache(text, text);  // 降级
             }
 
             window.MengRuntime.lastCleanTime = Date.now();
@@ -403,7 +387,7 @@ window.MengCleaner = {
     }
 };
 
-// ===== 启动标记 =====
+// 启动标记
 window.MengRuntime.cleanerLoaded = true;
 window.mengLog("✅ Cleaner 模块加载完成");
 window.mengLog("🧠 AI名字学习系统已启动");
@@ -414,7 +398,7 @@ window.mengLog("🔒 Cleaner 崩溃保护已启动");
 window.mengLog("💾 文本缓存已启用");
 window.mengLog("✨ Ultimate Cleaner Ready");
 
-// ===== 暴露 API =====
+// 暴露 API
 window.MengCleanerAPI = {
     clean: window.MengCleaner.cleanText,
     cache: { getCache, setCache, clearCache, getCacheInfo }
