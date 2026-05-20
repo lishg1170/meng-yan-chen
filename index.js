@@ -1,9 +1,9 @@
 (async () => {
     console.log("[梦晏晨] 插件加载初始化");
-    
+
     // ===== 异步等待 RuleManager 加载规则 =====
     async function initRules() {
-        if (!window.MengRuleManager) return {};
+        if (!window.MengRuleManager) return [];
         try {
             const rules = await window.MengRuleManager.loadRules();
             console.log("[梦晏晨] 规则已加载", rules);
@@ -14,119 +14,88 @@
         }
     }
 
-   // ===== 替换 index.js 内部 settings 初始化 =====
-   const rules = await initRules();
+    // ===== 初始化规则 =====
+    const rules = await initRules();
 
-   // 将规则映射成原来 cleanText 可用结构
-   const settings = {
-       nameFixMap: {},
-       simpleReplacements: [],
-       regexRules: [],
-       contextRules: []
-   };
+    // ===== 设置对象 =====
+    let settings = {
+        nameFixMap: {},
+        simpleReplacements: [],
+        regexRules: [],
+        contextRules: []
+    };
 
-   rules.forEach(r => {
-       if (!r.enabled) return;
-       switch(r.type) {
-           case "nameFix": settings.nameFixMap[r.from] = r.to; break;
-           case "simple": settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true }); break;
-           case "regex": 
-               settings.regexRules.push({
-                   pattern: r.pattern,
-                   replace: r.replace || "",
-                   flags: r.flags || "g",
-                   _regex: r._regex || new RegExp(r.pattern, r.flags || "g")
-               }); 
-               break;
-          case "context": settings.contextRules.push(r); break;
-        }
-    });
-
-    // ===== 规则更新回调 =====
-    window.MengRuleManager.registerUpdateCallback((newRules) => {
-        newRules.forEach(r => {
-            if (!r.enabled) return;
-            if (r.type === "nameFix") settings.nameFixMap[r.from] = r.to;
-            else if (r.type === "simple") {
-                const exist = settings.simpleReplacements.find(e => e.from === r.from);
-                if (!exist) settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true });
-            }
-            else if (r.type === "regex") {
-                const exist = settings.regexRules.find(e => e.pattern === r.pattern);
-                if (!exist) settings.regexRules.push({
+    // ===== 规则映射 =====
+    rules.forEach(r => {
+        if (!r.enabled) return;
+        switch(r.type){
+            case "nameFix": settings.nameFixMap[r.from] = r.to; break;
+            case "simple": settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true }); break;
+            case "regex": 
+                settings.regexRules.push({
                     pattern: r.pattern,
                     replace: r.replace || "",
                     flags: r.flags || "g",
                     _regex: r._regex || new RegExp(r.pattern, r.flags || "g")
                 });
+                break;
+            case "context": settings.contextRules.push(r); break;
+        }
+    });
+
+    // ===== 规则更新回调 =====
+    window.MengRuleManager?.registerUpdateCallback?.((newRules) => {
+        newRules.forEach(r => {
+            if (!r.enabled) return;
+            if (r.type === "nameFix") settings.nameFixMap[r.from] = r.to;
+            else if (r.type === "simple") {
+                if (!settings.simpleReplacements.find(e => e.from === r.from)) {
+                    settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true });
+                }
+            } else if (r.type === "regex") {
+                if (!settings.regexRules.find(e => e.pattern === r.pattern)) {
+                    settings.regexRules.push({
+                        pattern: r.pattern,
+                        replace: r.replace || "",
+                        flags: r.flags || "g",
+                        _regex: r._regex || new RegExp(r.pattern, r.flags || "g")
+                    });
+                }
             }
         });
         console.log("[梦晏晨] settings 已同步更新 ✅");
     });
 
-    // ===== 安全注入 Panda 按钮 =====
-    function injectPandaButton(context) {
+    // ===== UI 挂载 =====
+    window.MengUI = window.MengUI || {};
+    window.MengUI.openMengPanel = window.MengUI.openMengPanel || (() => {});
+    function injectPandaButton(context){
         const target = $("#data_bank_wand_container");
         if (!target.length) { setTimeout(() => injectPandaButton(context), 500); return; }
         if ($("#meng-panda-btn").length) return;
-
         const btn = $(`
 <div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;">
 <span>🐼</span><span>梦晏晨</span>
 </div>`);
-        btn.off("click").on("click", () => window.MengUI.openMengPanel?.(context));
+        btn.off("click").on("click", () => window.MengUI.openMengPanel(context));
         target.append(btn);
         console.log("[梦晏晨] 🐼 已成功注入");
     }
+    window.MengUI.injectPandaButton = injectPandaButton;
 
-    // ===== 安全挂载 UI 模块 =====
-    window.MengUI = window.MengUI || {};
-    window.MengUI.openMengPanel = uiModule?.openMengPanel || (() => {});
-    window.MengUI.injectPandaButton = uiModule?.injectPandaButton || injectPandaButton;
-
-    const PLUGIN_ID = "meng-yan-chen";
-    const context = window.SillyTavern?.getContext?.();
-    const extension_settings = context?.extension_settings || {};
-    const saveSettingsDebounced = context?.saveSettingsDebounced || (() => {});
-
-    // ===== 默认设置 =====
-    const defaultSettings = {
-        nameFixMap: { "林晟": "林晨", "林辰": "林晨" },
-        simpleReplacements: [{ from: "眸子", to: "眼睛", enabled: true }],
-        regexRules: [],
-        contextRules: []
-    };
-
-    const settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
-
-    // ===== 正则预编译 =====
-    if (Array.isArray(settings.regexRules)) {
-        settings.regexRules.forEach(rule => { 
-            if (!rule._regex && rule.pattern) {
-                try { rule._regex = new RegExp(rule.pattern, rule.flags || "g"); } 
-                catch(e) { console.warn("[梦晏晨] 无效正则规则", rule, e); }
-            }
-        });
-    }
-    extension_settings[PLUGIN_ID] = settings;
-
-    // ===== 全局管理 pendingConfirmations / correctNames =====
+    // ===== 全局管理 =====
     window.MengYanChen = window.MengYanChen || {};
     window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(['林晨','谢知许','洛君瑾']);
     window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
 
-    // ===== 消息处理函数 =====
-    function processMessage(msg, messageId) {
+    // ===== 消息处理 =====
+    function processMessage(msg, messageId){
         if (!window.MengCleaner || !msg || (!msg.mes && !msg.content) || msg._meng_cleaned) return;
         const field = msg.mes ? "mes" : "content";
         let cleaned;
-        try {
-            cleaned = window.MengCleaner.cleanText(msg[field], settings);
-        } catch(e) {
-            console.error("[梦晏晨] cleanText 出错", e, msg);
-            return;
-        }
-        if (cleaned !== msg[field]) {
+        try { cleaned = window.MengCleaner.cleanText(msg[field], settings); }
+        catch(e) { console.error("[梦晏晨] cleanText 出错", e, msg); return; }
+        if (cleaned !== msg[field]){
             msg[field] = cleaned;
             msg._meng_cleaned = true;
             const chat = window.SillyTavern?.getContext?.()?.chat;
@@ -136,57 +105,38 @@
         }
     }
 
-    // ===== 安全挂载 processMessageWithLearning =====
-    function safeMountProcessMessage() {
-        if (!window.MengUI) window.MengUI = {};
-        if (typeof processMessage !== 'function') { setTimeout(safeMountProcessMessage, 500); return; }
-        if (window.MengUI.processMessageWithLearning) return; // 防止重复挂载
-        window.MengUI.processMessageWithLearning = (msg, id) => {
-            try { processMessage(msg, id); } 
-            catch (err) { console.error("[梦晏晨] processMessageWithLearning 错误:", err); }
-        };
-        console.log("[梦晏晨] processMessageWithLearning 挂载完成");
-    }
-    safeMountProcessMessage();
+    // ===== 安全挂载 =====
+    window.MengUI.processMessageWithLearning = window.MengUI.processMessageWithLearning || ((msg,id) => {
+        try { processMessage(msg,id); } catch(e){ console.error(e); }
+    });
 
-    // ===== 延迟注入 Panda 按钮 =====
-    function tryInjectPanda(context) {
+    // ===== 延迟注入按钮 =====
+    function tryInjectPanda(context){
         const container = $("#data_bank_wand_container");
         if (!container.length) { setTimeout(() => tryInjectPanda(context), 500); return; }
-        if (!window.MengUI?.injectPandaButton) { setTimeout(() => tryInjectPanda(context), 500); return; }
         if ($("#meng-panda-btn").length) return;
-        window.MengUI.injectPandaButton({ settings, extension_settings, saveSettingsDebounced, PLUGIN_ID });
+        window.MengUI.injectPandaButton(context);
     }
 
-    // ===== 绑定消息事件 =====
-    function bindEvents() {
+    // ===== 事件绑定 =====
+    function bindEvents(){
         const context = window.SillyTavern?.getContext?.();
-        if (!context?.eventSource) { setTimeout(bindEvents, 500); return; }
+        if (!context?.eventSource) { setTimeout(bindEvents,500); return; }
         if (context._meng_bound) return;
         context._meng_bound = true;
-
-        console.log("[梦晏晨] 开始监听消息");
-
-        const bindEvent = (eventType) => {
-            context.eventSource.on(eventType, (...args) => {
-                const messageId = Number(args?.[0]);
-                const msg = context.chat?.[messageId];
-                if (msg) processMessage(msg, messageId);
-            });
-        };
+        const bindEvent = (eventType) => context.eventSource.on(eventType,(...args)=>{
+            const messageId = Number(args?.[0]);
+            const msg = context.chat?.[messageId];
+            if(msg) processMessage(msg,messageId);
+        });
         bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
         bindEvent(context.event_types.USER_MESSAGE_RENDERED);
-
-        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { 
-            console.log("[梦晏晨] 聊天切换事件", args); 
-        });
     }
 
-    // ===== 初始化入口 =====
     if (!window.__ST_IMPORT_EXPORT_MODE__) {
-        $(document).ready(() => {
+        $(document).ready(()=>{
             console.log("[梦晏晨] 插件已启动");
-            tryInjectPanda({ settings, extension_settings, saveSettingsDebounced, PLUGIN_ID });
+            tryInjectPanda({ settings });
             bindEvents();
         });
     }
