@@ -1,5 +1,5 @@
 // ======================
-// 梦晏晨 Cleaner Cache
+// 梦晏晨 Cleaner
 // ======================
 
 const MENG_CACHE = new Map();
