@@ -21,10 +21,39 @@
             console.warn("[梦晏晨] UI 加载失败", e);
         });
 
+    // ==== 插件 ID 和 上下文 ====
     const PLUGIN_ID = "meng-yan-chen";
     const context = window.SillyTavern?.getContext?.();
     const extension_settings = context?.extension_settings || {};
     const saveSettingsDebounced = context?.saveSettingsDebounced || (() => {});
+    
+    // ===== 永久规则管理 =====
+
+    import("./ruleManager.js").then(({ default: RuleManager }) => {
+
+        // 自动加载规则
+
+        window.MengRules = RuleManager.loadRules();
+
+        // 暴露保存方法给 UI 使用
+
+        window.MengRulesSave = (newSettings) => {
+
+            window.MengRules = newSettings;
+
+            RuleManager.saveRules(newSettings);
+
+        };
+
+        console.log("[梦晏晨] 永久规则已加载", window.MengRules);
+
+    }).catch(e => {
+
+        console.warn("[梦晏晨] RuleManager 加载失败", e);
+
+    });
+
+})();
 
     // ===== 默认设置 =====
     const defaultSettings = {
