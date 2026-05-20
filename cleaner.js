@@ -1,27 +1,34 @@
+// MengCleaner.js
 import RuleManager from "./ruleManager.js";
 
 const MengCleaner = {
     _rulesCache: [],
 
+    // ==== 初始化：加载规则 & 注册更新回调 ====
     async init() {
-        // 初始加载
-        this._rulesCache = await RuleManager.loadRules();
+        try {
+            // 初始加载
+            this._rulesCache = await RuleManager.loadRules();
+            console.log("[梦晏晨 MengCleaner] 初始规则加载完成，数量:", this._rulesCache.length);
 
-        // 注册规则更新回调
-        RuleManager.registerUpdateCallback((newRules) => {
-            this._rulesCache = newRules;
-            console.log("[梦晏晨 MengCleaner] 已刷新内部规则缓存:", newRules);
-        });
+            // 注册规则更新回调
+            RuleManager.registerUpdateCallback((newRules) => {
+                this._rulesCache = newRules;
+                console.log("[梦晏晨 MengCleaner] 已刷新内部规则缓存:", newRules.length);
+            });
 
-        console.log("[梦晏晨 MengCleaner] 初始化完成，规则数:", this._rulesCache.length);
+        } catch (err) {
+            console.error("[梦晏晨 MengCleaner] init 错误 ❌", err);
+        }
     },
 
+    // ==== 清理文本 ====
     async cleanText(text, settings = {}) {
         if (!text) return text;
 
         let cleaned = text;
 
-        // ==== user和char变量保护 ====
+        // ==== 1️⃣ user和char变量保护 ====
         const variableMap = {
             "{{user}}": "MENGUSERTOKEN",
             "{{char}}": "MENGCHARTOKEN"
@@ -30,7 +37,7 @@ const MengCleaner = {
             cleaned = cleaned.replaceAll(k, v);
         }
 
-        // ===== 保护状态栏/XML/标签 =====
+        // ==== 2️⃣ 保护状态栏/XML/标签 ====
         const protectedBlocks = [];
         cleaned = cleaned.replace(
             /<([a-zA-Z\u4e00-\u9fa5][^>\s]*)[^>]*>[\s\S]*?<\/\1>|\[[^\]]*\]/g,
@@ -40,7 +47,7 @@ const MengCleaner = {
             }
         );
 
-        // ===== 使用 _rulesCache 合并规则 =====
+        // ==== 3️⃣ 合并规则 ====
         const mergedSettings = {
             nameFixRules: settings.nameFixRules || this._rulesCache.filter(r => r.type === "nameFix"),
             regexRules: settings.regexRules || this._rulesCache.filter(r => r.type === "regex"),
@@ -48,7 +55,7 @@ const MengCleaner = {
             contextRules: settings.contextRules || this._rulesCache.filter(r => r.type === "context")
         };
 
-        // ===== 0️⃣ 上下文删除规则 =====
+        // ==== 4️⃣ 上下文删除规则 ====
         for (const rule of mergedSettings.contextRules) {
             if (!rule.enabled) continue;
             try {
@@ -61,7 +68,7 @@ const MengCleaner = {
             }
         }
 
-        // ===== 1️⃣ 名字修正 =====
+        // ==== 5️⃣ 名字修正 ====
         for (const rule of mergedSettings.nameFixRules) {
             if (rule.enabled === false) continue;
             const { from, to } = rule;
@@ -70,99 +77,83 @@ const MengCleaner = {
             cleaned = cleaned.replaceAll(from, to);
         }
 
-        // ===== 2️⃣ regex规则 =====
+        // ==== 6️⃣ regex规则 ====
         for (const rule of mergedSettings.regexRules) {
             if (!rule.enabled) continue;
             try {
                 if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g");
                 const matches = cleaned.match(rule._regex);
-                if (matches?.length) console.log(`[梦晏晨] 正则规则匹配: "${rule.pattern}"`, matches);
+                if (matches?.length) console.log(`[梦晏晨] 正则匹配: "${rule.pattern}"`, matches);
                 cleaned = cleaned.replace(rule._regex, rule.replace ?? " ");
             } catch (err) {
                 console.warn("[梦晏晨] regex规则错误:", rule.pattern, err);
             }
         }
 
-        // ===== 3️⃣ 简单替换 =====
+        // ==== 7️⃣ 简单替换 ====
         for (const rule of mergedSettings.simpleReplacements) {
             if (rule.enabled === false) continue;
             if (cleaned.includes(rule.from)) console.log(`[梦晏晨] 简单替换: "${rule.from}" → "${rule.to}"`);
             cleaned = cleaned.replaceAll(rule.from, rule.to || "");
         }
 
-        // ===== 4️⃣ 句子清理与自然段优化 =====
+        // ==== 8️⃣ 句子清理 & 动作句删除 ====
         const actionWords = ["盯着","看着","笑着","沉默着","站着"];
         const actionPattern = actionWords.join("|");
 
-        // 1️⃣ 单独一行动作句
+        // 单独一行动作句
         cleaned = cleaned.replace(
-            new RegExp(`^(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？]?\\s*$`, "gm"),
+            new RegExp(`^(?:${Object.keys(variableMap).join("|")})?\\s*(?:${actionPattern})[。！？]?\\s*$`, "gm"),
             ""
         );
-
-        // 2️⃣ 单独一句
+        // 单独一句
         cleaned = cleaned.replace(
-            new RegExp(`(?:^|[。！？；\\n])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？；]?`, "g"),
+            new RegExp(`(?:^|[。！？；\\n])\\s*(?:${Object.keys(variableMap).join("|")})?\\s*(?:${actionPattern})[。！？；]?`, "g"),
             ""
         );
-
-        // 3️⃣ 半句开头动作句
+        // 半句开头动作句
         cleaned = cleaned.replace(
-            new RegExp(`(?:^|[。！？；])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]`, "g"),
+            new RegExp(`(?:^|[。！？；])\\s*(?:${Object.keys(variableMap).join("|")})?\\s*(?:${actionPattern})[，,]`, "g"),
             ""
         );
-
-        // 4️⃣ 句中残留动作句
+        // 句中残留动作句
         cleaned = cleaned.replace(
-            new RegExp(`([。！？；]|^)[，,]\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]([。！？；]|$)`, "g"),
+            new RegExp(`([。！？；]|^)[，,]\\s*(?:${Object.keys(variableMap).join("|")})?\\s*(?:${actionPattern})[，,]([。！？；]|$)`, "g"),
             "$1，$2"
         );
 
         // 删除残缺连接词
         cleaned = cleaned.replace(/^(像|仿佛|如同|宛若)[，。！？；,]*$/gm, "");
-
-        // 弱处理眼睛/空气残句
         cleaned = cleaned.replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ");
 
-        // ===== 标点压缩 =====
+        // ==== 9️⃣ 标点压缩 ====
         cleaned = cleaned
             .replace(/，\s*，/g, "，")
             .replace(/。\s*。/g, "。")
             .replace(/：\s*：/g, "：")
-            .replace(/，\s*。/g, "。")
-            .replace(/。\s*，/g, "，")
-            .replace(/,\s*\./g, ".")
-            .replace(/\.\s*,/g, ",")
-            .replace(/[，,]{2,}/g, "，")
-            .replace(/[。\.]{2,}/g, "。")
+            .replace(/[，。！？；：]{2,}/g, "。")
             .replace(/[！!]{2,}/g, "！")
             .replace(/[？?]{2,}/g, "？")
-            .replace(/^[，。！？；：]+/gm, "")
-            .replace(/[，。！？；：]\s*[，。！？；：]+/g, "。");
+            .replace(/^[，。！？；：]+/gm, "");
 
         // 删除孤立代词/动作残句
         cleaned = cleaned.replace(/^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？,]*$/gm, "");
 
-        // ===== 多空行压缩为 1 空行 =====
-        cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-        cleaned = cleaned.replace(/[ \t]{2,}/g, "");
+        // ==== 10️⃣ 多空行压缩 & 自然段 ====
+        cleaned = cleaned.replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, "");
 
-        // ===== 分割自然段（2~4句随机为一个自然段） =====
         const sentences = cleaned.split(/([。！？])/)
             .reduce((acc, val, idx, arr) => {
-                if (/[。！？]/.test(val)) {
-                    acc.push((arr[idx-1] || '') + val);
-                }
+                if (/[。！？]/.test(val)) acc.push((arr[idx-1] || '') + val);
                 return acc;
             }, [])
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
+            .map(s => s.trim()).filter(s => s.length > 0);
 
         let paragraph = [];
         let paragraphs = [];
         for (let i = 0; i < sentences.length; i++) {
             paragraph.push(sentences[i]);
-            const randLength = 2 + Math.floor(Math.random() * 3); // 2~4句
+            const randLength = 2 + Math.floor(Math.random() * 3);
             if (paragraph.length >= randLength || i === sentences.length - 1) {
                 paragraphs.push(paragraph.join(""));
                 paragraph = [];
@@ -170,16 +161,16 @@ const MengCleaner = {
         }
         cleaned = paragraphs.join("\n\n");
 
-        // ===== 5️⃣ 删除奇葩字符 =====
+        // ==== 11️⃣ 删除奇葩字符 ====
         cleaned = cleaned.replace(
             /[^a-zA-Z0-9\u4e00-\u9fa5，。！？、；：“”‘’（）《》〈〉【】『』…@\u{1F300}-\u{1FAFF}\s]/gu,
             ""
         );
 
-        // ==== 状态栏/标签恢复 ====
+        // ==== 12️⃣ 状态栏/标签恢复 ====
         cleaned = cleaned.replace(/MENGBLOCK(\d+)/g, (_, i) => protectedBlocks[i]);
 
-        // ==== user和char变量恢复 ====
+        // ==== 13️⃣ user/char 恢复 ====
         for (const [k, v] of Object.entries(variableMap)) {
             cleaned = cleaned.replaceAll(v, k);
         }
