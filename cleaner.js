@@ -1,5 +1,5 @@
 // ==========================
-// 梦晏晨CleanerCache clear.js
+// 梦晏晨CleanerCache cleaner.js
 // ===========================
 
 const MENG_CACHE = new Map();
