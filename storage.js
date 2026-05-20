@@ -1,4 +1,4 @@
-// 负责永久保存插件规则
+// 负责永久保存插件规则（让我过）
 const RuleManager = {
     STORAGE_KEY: "meng_rules", // 本地存储 key
 
