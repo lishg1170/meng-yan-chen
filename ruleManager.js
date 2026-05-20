@@ -1,56 +1,68 @@
 // ruleManager.js
-// 用于管理插件规则，支持永久保存到 SillyTavern 的 extension_settings
+const STORAGE_KEY = "梦晏晨_rules";
 
-const RuleManager = {
-    STORAGE_KEY: "meng_rules",
-
-    // 读取规则，如果没有则返回空数组
+export default {
+    /**
+     * 加载规则
+     * @returns {Array} 规则数组
+     */
     loadRules() {
         try {
-            const context = window.SillyTavern?.getContext?.();
-            const settings = context?.extension_settings || {};
-            const rulesJson = settings[this.STORAGE_KEY];
-            if (!rulesJson) return [];
-            return JSON.parse(rulesJson);
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return [];
+            const rules = JSON.parse(raw);
+            if (!Array.isArray(rules)) return [];
+            return rules;
         } catch (e) {
-            console.warn("[Meng] 读取规则失败", e);
+            console.warn("[梦晏晨 RuleManager] 加载规则失败:", e);
             return [];
         }
     },
 
-    // 保存规则
-    saveRules(newRules) {
+    /**
+     * 保存规则
+     * @param {Array} rules 规则数组
+     */
+    saveRules(rules) {
         try {
-            const context = window.SillyTavern?.getContext?.();
-            if (!context?.extension_settings) return;
-            context.extension_settings[this.STORAGE_KEY] = JSON.stringify(newRules);
-
-            // 调用 ST 自带保存方法
-            if (typeof context.saveSettingsDebounced === "function") {
-                context.saveSettingsDebounced();
-            }
-
-            console.log("[Meng] 规则已保存", newRules);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules || []));
+            console.log("[梦晏晨 RuleManager] 已保存规则:", rules);
         } catch (e) {
-            console.warn("[Meng] 保存规则失败", e);
+            console.error("[梦晏晨 RuleManager] 保存规则失败:", e);
         }
     },
 
-    // 增加单条规则
+    /**
+     * 添加新规则
+     * @param {Object} rule { from, to, enabled }
+     */
     addRule(rule) {
+        if (!rule || typeof rule !== "object") return;
         const rules = this.loadRules();
         rules.push(rule);
         this.saveRules(rules);
+        console.log("[梦晏晨 RuleManager] 添加规则:", rule);
     },
 
-    // 删除单条规则（按 index）
+    /**
+     * 删除指定索引规则
+     * @param {number} index 索引
+     */
     removeRule(index) {
         const rules = this.loadRules();
         if (index < 0 || index >= rules.length) return;
-        rules.splice(index, 1);
+        const removed = rules.splice(index, 1);
         this.saveRules(rules);
+        console.log("[梦晏晨 RuleManager] 删除规则:", removed[0]);
+    },
+
+    /**
+     * 覆盖所有规则
+     * @param {Array} newRules 新规则数组
+     */
+    replaceRules(newRules) {
+        if (!Array.isArray(newRules)) return;
+        this.saveRules(newRules);
+        console.log("[梦晏晨 RuleManager] 已覆盖全部规则");
     }
 };
-
-// ✅ 导出默认对象
-export default RuleManager;
