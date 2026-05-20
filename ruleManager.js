@@ -1,75 +1,99 @@
 // ruleManager.js
-// ============================
-// 梦晏晨规则管理器（Tauri/iPad 专用）
-// ============================
 
-const DEFAULT_RULES_URL = "https://raw.githubusercontent.com/lishg1170/meng-yan-chen/refs/heads/main/menganchen.json";
-const STORAGE_KEY = "梦晏晨_rules";
+const RULE_STORAGE_KEY = "meng_rules_v1";
 
-export default {
-    /**
-     * 加载规则
-     * Tauri/iPad 异步安全
-     */
+const RuleManager = {
+    _rulesCache: [],
+    _updateCallbacks: [],
+
+    // ==== 1️⃣ 加载规则 ====
     async loadRules() {
         try {
-            // 1️⃣ 本地优先
-            let raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const rules = JSON.parse(raw);
-                if (Array.isArray(rules)) return rules;
+            const raw = localStorage.getItem(RULE_STORAGE_KEY);
+            if (!raw) {
+                console.log("[梦晏晨 RuleManager] 未找到规则，返回空数组");
+                this._rulesCache = [];
+                return this._rulesCache;
             }
-
-            // 2️⃣ 本地没有则从 GitHub 拉取
-            console.log("[梦晏晨 RuleManager] 本地存储为空，尝试 GitHub 初始化");
-            const resp = await fetch(DEFAULT_RULES_URL);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            raw = await resp.text();
-
-            let rules = [];
-            try {
-                rules = JSON.parse(raw);
-                if (!Array.isArray(rules)) rules = [];
-            } catch {
-                rules = [];
-            }
-
-            // 3️⃣ 写入 localStorage 保证下次可用
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            console.log("[梦晏晨 RuleManager] 已初始化规则:", rules);
-            return rules;
-
-        } catch (e) {
-            console.warn("[梦晏晨 RuleManager] 加载失败:", e);
-            return [];
+            const parsed = JSON.parse(raw);
+            this._rulesCache = Array.isArray(parsed) ? parsed : [];
+            console.log(`[梦晏晨 RuleManager] 加载规则成功，数量: ${this._rulesCache.length}`);
+            return this._rulesCache;
+        } catch (err) {
+            console.error("[梦晏晨 RuleManager] loadRules 错误 ❌", err);
+            this._rulesCache = [];
+            return this._rulesCache;
         }
     },
 
-    saveRules(rules) {
+    // ==== 2️⃣ 保存规则 ====
+    async saveRules(newRules) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules || []));
-            console.log("[梦晏晨 RuleManager] 已保存规则:", rules);
-        } catch (e) {
-            console.error("[梦晏晨 RuleManager] 保存失败:", e);
+            if (!Array.isArray(newRules)) {
+                console.warn("[梦晏晨 RuleManager] saveRules: newRules 不是数组，忽略保存");
+                return;
+            }
+            this._rulesCache = newRules;
+            localStorage.setItem(RULE_STORAGE_KEY, JSON.stringify(newRules));
+            console.log(`[梦晏晨 RuleManager] 保存规则成功，数量: ${newRules.length}`);
+
+            // ==== 调用回调 ====
+            this._updateCallbacks.forEach(cb => {
+                try { cb(this._rulesCache); }
+                catch(err) { console.error("[梦晏晨 RuleManager] updateCallback 错误 ❌", err); }
+            });
+        } catch (err) {
+            console.error("[梦晏晨 RuleManager] saveRules 错误 ❌", err);
         }
     },
 
+    // ==== 3️⃣ 注册规则更新回调 ====
+    registerUpdateCallback(callback) {
+        if (typeof callback !== "function") {
+            console.warn("[梦晏晨 RuleManager] registerUpdateCallback: 参数不是函数");
+            return;
+        }
+        this._updateCallbacks.push(callback);
+        console.log("[梦晏晨 RuleManager] 注册更新回调，当前回调数量:", this._updateCallbacks.length);
+    },
+
+    // ==== 4️⃣ 获取当前规则缓存 ====
+    getRules() {
+        return this._rulesCache.slice(); // 返回副本，防止外部修改
+    },
+
+    // ==== 5️⃣ 添加新规则 ====
     async addRule(rule) {
-        if (!rule || typeof rule !== "object") return;
-        const rules = await this.loadRules();
-        rules.push(rule);
-        this.saveRules(rules);
+        if (!rule || !rule.type) {
+            console.warn("[梦晏晨 RuleManager] addRule: rule 格式不对", rule);
+            return;
+        }
+        this._rulesCache.push(rule);
+        console.log("[梦晏晨 RuleManager] 添加新规则:", rule);
+        await this.saveRules(this._rulesCache);
     },
 
+    // ==== 6️⃣ 删除规则（按 index） ====
     async removeRule(index) {
-        const rules = await this.loadRules();
-        if (index < 0 || index >= rules.length) return;
-        rules.splice(index, 1);
-        this.saveRules(rules);
+        if (typeof index !== "number" || index < 0 || index >= this._rulesCache.length) {
+            console.warn("[梦晏晨 RuleManager] removeRule: index 无效", index);
+            return;
+        }
+        const removed = this._rulesCache.splice(index, 1);
+        console.log("[梦晏晨 RuleManager] 删除规则:", removed[0]);
+        await this.saveRules(this._rulesCache);
     },
 
-    replaceRules(newRules) {
-        if (!Array.isArray(newRules)) return;
-        this.saveRules(newRules);
+    // ==== 7️⃣ 更新规则（按 index） ====
+    async updateRule(index, newRule) {
+        if (typeof index !== "number" || index < 0 || index >= this._rulesCache.length) {
+            console.warn("[梦晏晨 RuleManager] updateRule: index 无效", index);
+            return;
+        }
+        this._rulesCache[index] = newRule;
+        console.log("[梦晏晨 RuleManager] 更新规则:", newRule);
+        await this.saveRules(this._rulesCache);
     }
 };
+
+export default RuleManager;
