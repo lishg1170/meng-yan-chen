@@ -1,31 +1,47 @@
 // ruleManager.js
 // ============================
-// 梦晏晨规则管理器（Tauri/iPad 原生适配版）
-// 目标：永久保存规则，无需依赖UI
+// 梦晏晨规则管理器（自动刷新 MengCleaner 内部缓存）
 // ============================
 
-// 默认 GitHub 初始化规则文件（可以是空文件）
+// 默认 GitHub 初始化规则文件（空文件也行）
 const DEFAULT_RULES_URL = "https://raw.githubusercontent.com/lishg1170/meng-yan-chen/refs/heads/main/menganchen.json";
 
 // 本地存储 key
 const STORAGE_KEY = "梦晏晨_rules";
 
-const RuleManager = {
+// 内部缓存，避免每次都 fetch
+let _cachedRules = null;
+
+// 注册 MengCleaner 缓存刷新函数（可选）
+let _onRulesUpdated = null;
+
+export default {
+    /**
+     * 注册规则更新回调（例如刷新 MengCleaner 内部缓存）
+     * @param {function} callback 回调函数，参数是最新规则数组
+     */
+    registerUpdateCallback(callback) {
+        _onRulesUpdated = callback;
+    },
+
     /**
      * 加载规则
-     * 优先本地存储，如果没有再拉 GitHub 初始化文件
      * @returns {Promise<Array>} 规则数组
      */
     async loadRules() {
+        if (_cachedRules) return _cachedRules;
+
         try {
-            // 1️⃣ 本地存储优先
             let raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 const rules = JSON.parse(raw);
-                if (Array.isArray(rules)) return rules;
+                if (Array.isArray(rules)) {
+                    _cachedRules = rules;
+                    return rules;
+                }
             }
 
-            // 2️⃣ 本地没有则尝试 GitHub 初始化拉取
+            // 本地没有则尝试 GitHub 初始化
             console.log("[梦晏晨 RuleManager] 本地存储为空，尝试 GitHub 初始化");
             const response = await fetch(DEFAULT_RULES_URL);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -40,25 +56,31 @@ const RuleManager = {
                 rules = [];
             }
 
-            // 3️⃣ 保存到本地存储，保证下次直接使用
+            // 保存到本地
             localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+            _cachedRules = rules;
             console.log("[梦晏晨 RuleManager] 已从 GitHub 初始化规则:", rules);
             return rules;
-
         } catch (e) {
             console.warn("[梦晏晨 RuleManager] 加载规则失败:", e);
+            _cachedRules = [];
             return [];
         }
     },
 
     /**
-     * 保存规则到本地存储
+     * 保存规则
      * @param {Array} rules 规则数组
      */
     saveRules(rules) {
+        if (!Array.isArray(rules)) return;
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(rules || []));
+            _cachedRules = rules;
             console.log("[梦晏晨 RuleManager] 已保存规则:", rules);
+
+            // 调用更新回调刷新 MengCleaner 内部缓存
+            if (_onRulesUpdated) _onRulesUpdated(rules);
         } catch (e) {
             console.error("[梦晏晨 RuleManager] 保存规则失败:", e);
         }
@@ -66,7 +88,7 @@ const RuleManager = {
 
     /**
      * 添加新规则
-     * @param {Object} rule { type, from, to, enabled }
+     * @param {Object} rule
      */
     async addRule(rule) {
         if (!rule || typeof rule !== "object") return;
@@ -78,7 +100,7 @@ const RuleManager = {
 
     /**
      * 删除指定索引规则
-     * @param {number} index 索引
+     * @param {number} index
      */
     async removeRule(index) {
         const rules = await this.loadRules();
@@ -89,14 +111,11 @@ const RuleManager = {
     },
 
     /**
-     * 覆盖所有规则
-     * @param {Array} newRules 新规则数组
+     * 覆盖全部规则
+     * @param {Array} newRules
      */
     replaceRules(newRules) {
-        if (!Array.isArray(newRules)) return;
         this.saveRules(newRules);
         console.log("[梦晏晨 RuleManager] 已覆盖全部规则");
     }
 };
-
-export default RuleManager;
