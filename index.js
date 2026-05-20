@@ -1,6 +1,6 @@
 // ======================
 // 梦晏晨 Ultimate Index
-// index.js (最终正确版 - 匹配实际文件名)
+// index.js (最终版，不再动态加载)
 // ======================
 
 console.log("[梦晏晨] Ultimate Index 启动中...");
@@ -41,39 +41,6 @@ function mengToast(message) {
 
 function getSTContext() {
     try { return window.SillyTavern?.getContext?.(); } catch (err) { return null; }
-}
-
-// ===== 动态脚本加载 =====
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-            return resolve();
-        }
-        const script = document.createElement("script");
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = () => reject(new Error(`加载失败: ${src}`));
-        document.head.appendChild(script);
-    });
-}
-
-async function loadDependencies() {
-    // 【重要】路径请根据你的扩展文件夹名确认，通常为 scripts/extensions/third-party/meng-yan-chen/
-    const base = "scripts/extensions/third-party/meng-yan-chen/";
-    const files = [
-        "cleaner.js",      // 第一个修复的文件
-        "ruleManager.js",  // 第四个修复的文件（注意大小写）
-        "ui.js"            // 第二个修复的文件（原来叫 mengpanel.js，你这里是 ui.js）
-    ];
-
-    for (const file of files) {
-        try {
-            await loadScript(base + file);
-            mengLog(`✅ 已加载 ${file}`);
-        } catch (err) {
-            mengLog(`💥 加载失败: ${file} - ${err.message}`, "error");
-        }
-    }
 }
 
 // ===== 安全等待（超时不抛异常） =====
@@ -127,12 +94,10 @@ async function loadSettings() {
             context.saveSettingsDebounced?.();
             mengLog("🆕 已创建默认设置");
         }
-        // 安全修复
         settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
         settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
         settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
         settings.contextRules = Array.isArray(settings.contextRules) ? settings.contextRules : [];
-        // 正则预编译
         for (const rule of settings.regexRules) {
             try {
                 if (!rule._regex && rule.pattern) {
@@ -206,7 +171,7 @@ async function preInit() {
     mengLog("✅ 预初始化完成");
 }
 
-// ===== 消息清洗相关（使用全局对象，只需定义一次） =====
+// ===== 消息清洗 =====
 function isAlreadyCleaned(msg) {
     if (!msg) return true;
     if (msg._meng_cleaned) return true;
@@ -264,7 +229,6 @@ async function processMessage(msg, messageId) {
         msg[field] = cleaned;
         markCleaned(msg);
 
-        // 更新 chat 缓存
         try {
             const context = getSTContext();
             const chat = context?.chat;
@@ -296,7 +260,6 @@ function bindMessageEvents() {
         const bindEvent = (eventType, name) => {
             context.eventSource.on(eventType, async (...args) => {
                 try {
-                    // CHAT_CHANGED 不处理单条消息
                     if (eventType === context.event_types.CHAT_CHANGED) return;
                     const rawId = args?.[0];
                     const messageId = Number(rawId);
@@ -333,14 +296,13 @@ function setupAutoSave() {
     mengLog("💾 自动保存已启动");
 }
 
-// ===== UI 注入函数（确保 MengUI 存在时调用） =====
+// ===== UI 注入 =====
 async function injectPandaButton() {
     try {
         if (!window.MengUI || typeof window.MengUI.injectPandaButton !== "function") {
             mengLog("⚠️ MengUI 未就绪，无法注入 Panda 按钮");
             return;
         }
-        // 构造 context
         const context = {
             settings,
             extension_settings: getSTContext()?.extension_settings,
@@ -379,18 +341,13 @@ function createFloatingLogButton() {
     mengLog("📜 浮动日志按钮已创建");
 }
 
-// ===== 最终启动流程 =====
+// ===== 最终启动 =====
 (async () => {
     try {
         mengLog("🌿 梦晏晨 index.js 开始执行");
 
-        // 1. 加载依赖脚本（关键！）
-        await loadDependencies();
-
-        // 2. 预初始化
         await preInit();
 
-        // 3. 绑定规则更新监听
         if (window.MengRuleManager?.registerUpdateCallback) {
             window.MengRuleManager.registerUpdateCallback(async (newSettings) => {
                 try {
@@ -405,20 +362,14 @@ function createFloatingLogButton() {
             mengLog("📡 RuleManager监听完成");
         }
 
-        // 4. UI 恢复器
         setInterval(() => {
             try {
-                if (!$("#meng-panda-btn").length) {
-                    injectPandaButton();
-                }
-                if (!$("#meng-log-floating-btn").length) {
-                    createFloatingLogButton();
-                }
+                if (!$("#meng-panda-btn").length) injectPandaButton();
+                if (!$("#meng-log-floating-btn").length) createFloatingLogButton();
             } catch (err) {}
         }, 10000);
         mengLog("🛡️ UI恢复器已启动");
 
-        // 5. 安全启动（等待 DOM 并初始化界面）
         if (window.__ST_IMPORT_EXPORT_MODE__) {
             mengLog("⚠️ 导入模式，跳过启动");
             return;
@@ -427,13 +378,11 @@ function createFloatingLogButton() {
             await new Promise(resolve => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
         }
 
-        // 注入按钮、绑定消息监听、自动保存等
         await injectPandaButton();
         createFloatingLogButton();
         bindMessageEvents();
         setupAutoSave();
 
-        // 暴露 API
         window.MengYanChenAPI = {
             settings,
             saveSettings,
