@@ -1,7 +1,7 @@
 (async () => {
     console.log("[梦晏晨] 插件加载初始化");
 
-    // ===== 求求别崩溃了，异步安全导入模块 =====
+    // ===== 异步安全导入模块 =====
     let cleanerModule = {};
     let uiModule = {};
     try { cleanerModule = await import("./cleaner.js"); } 
@@ -22,17 +22,15 @@
 <div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;">
 <span>🐼</span><span>梦晏晨</span>
 </div>`);
-        btn.on("click", () => window.MengUI.openMengPanel?.(context));
+        btn.off("click").on("click", () => window.MengUI.openMengPanel?.(context));
         target.append(btn);
         console.log("[梦晏晨] 🐼 已成功注入");
     }
 
     // ===== 安全挂载 UI 模块 =====
-
-    window.MengUI = {
-        openMengPanel: uiModule.openMengPanel,
-        injectPandaButton: uiModule.injectPandaButton,
-    };
+    window.MengUI = window.MengUI || {};
+    window.MengUI.openMengPanel = uiModule?.openMengPanel || (() => {});
+    window.MengUI.injectPandaButton = uiModule?.injectPandaButton || injectPandaButton;
 
     const PLUGIN_ID = "meng-yan-chen";
     const context = window.SillyTavern?.getContext?.();
@@ -47,11 +45,17 @@
         contextRules: []
     };
 
-    let settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
+    const settings = Object.assign({}, defaultSettings, extension_settings[PLUGIN_ID] || {});
 
-    settings.regexRules.forEach(rule => { 
-        if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g"); 
-    });
+    // ===== 正则预编译 =====
+    if (Array.isArray(settings.regexRules)) {
+        settings.regexRules.forEach(rule => { 
+            if (!rule._regex && rule.pattern) {
+                try { rule._regex = new RegExp(rule.pattern, rule.flags || "g"); } 
+                catch(e) { console.warn("[梦晏晨] 无效正则规则", rule, e); }
+            }
+        });
+    }
     extension_settings[PLUGIN_ID] = settings;
 
     // ===== 全局管理 pendingConfirmations / correctNames =====
@@ -63,7 +67,13 @@
     function processMessage(msg, messageId) {
         if (!window.MengCleaner || !msg || (!msg.mes && !msg.content) || msg._meng_cleaned) return;
         const field = msg.mes ? "mes" : "content";
-        const cleaned = window.MengCleaner.cleanText(msg[field], settings);
+        let cleaned;
+        try {
+            cleaned = window.MengCleaner.cleanText(msg[field], settings);
+        } catch(e) {
+            console.error("[梦晏晨] cleanText 出错", e, msg);
+            return;
+        }
         if (cleaned !== msg[field]) {
             msg[field] = cleaned;
             msg._meng_cleaned = true;
@@ -78,8 +88,9 @@
     function safeMountProcessMessage() {
         if (!window.MengUI) window.MengUI = {};
         if (typeof processMessage !== 'function') { setTimeout(safeMountProcessMessage, 500); return; }
-        window.MengUI.processMessageWithLearning = (msg, id, settings) => {
-            try { processMessage(msg, id, settings); } 
+        if (window.MengUI.processMessageWithLearning) return; // 防止重复挂载
+        window.MengUI.processMessageWithLearning = (msg, id) => {
+            try { processMessage(msg, id); } 
             catch (err) { console.error("[梦晏晨] processMessageWithLearning 错误:", err); }
         };
         console.log("[梦晏晨] processMessageWithLearning 挂载完成");
@@ -88,7 +99,8 @@
 
     // ===== 延迟注入 Panda 按钮 =====
     function tryInjectPanda(context) {
-        if (!$("#data_bank_wand_container").length) { setTimeout(() => tryInjectPanda(context), 500); return; }
+        const container = $("#data_bank_wand_container");
+        if (!container.length) { setTimeout(() => tryInjectPanda(context), 500); return; }
         if (!window.MengUI?.injectPandaButton) { setTimeout(() => tryInjectPanda(context), 500); return; }
         if ($("#meng-panda-btn").length) return;
         window.MengUI.injectPandaButton({ settings, extension_settings, saveSettingsDebounced, PLUGIN_ID });
@@ -112,7 +124,10 @@
         };
         bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
         bindEvent(context.event_types.USER_MESSAGE_RENDERED);
-        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { console.log("[梦晏晨] 聊天切换事件", args); });
+
+        context.eventSource.on(context.event_types.CHAT_CHANGED, (...args) => { 
+            console.log("[梦晏晨] 聊天切换事件", args); 
+        });
     }
 
     // ===== 初始化入口 =====
