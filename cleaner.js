@@ -1,18 +1,19 @@
-// MengCleaner.js
 import RuleManager from "./ruleManager.js";
 
 const MengCleaner = {
     _rulesCache: [],
 
     async init() {
-        // 注册规则更新回调，刷新内部缓存
+        // 初始加载
+        this._rulesCache = await RuleManager.loadRules();
+
+        // 注册规则更新回调
         RuleManager.registerUpdateCallback((newRules) => {
             this._rulesCache = newRules;
             console.log("[梦晏晨 MengCleaner] 已刷新内部规则缓存:", newRules);
         });
 
-        // 初始加载
-        this._rulesCache = await RuleManager.loadRules();
+        console.log("[梦晏晨 MengCleaner] 初始化完成，规则数:", this._rulesCache.length);
     },
 
     async cleanText(text, settings = {}) {
@@ -39,7 +40,7 @@ const MengCleaner = {
             }
         );
 
-        // ===== 合并规则 =====
+        // ===== 使用 _rulesCache 合并规则 =====
         const mergedSettings = {
             nameFixRules: settings.nameFixRules || this._rulesCache.filter(r => r.type === "nameFix"),
             regexRules: settings.regexRules || this._rulesCache.filter(r => r.type === "regex"),
