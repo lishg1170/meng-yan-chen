@@ -64,14 +64,24 @@
             }
         });
         console.log("[梦晏晨] settings 已同步更新 ✅");
+        showTip("规则已更新 ✅");
     });
 
     // ===== UI 挂载 =====
     window.MengUI = window.MengUI || {};
-    window.MengUI.openMengPanel = window.MengUI.openMengPanel || (() => {});
+    // 确保 openMengPanel 不为空，提供默认面板提示
+    window.MengUI.openMengPanel = window.MengUI.openMengPanel || ((context) => {
+        showTip("梦晏晨面板打开！⚡（这是默认提示，可替换成真正UI）");
+        console.log("[梦晏晨] 打开面板（默认提示）", context);
+    });
+
     function injectPandaButton(context){
         const target = $("#data_bank_wand_container");
-        if (!target.length) { setTimeout(() => injectPandaButton(context), 500); return; }
+        if (!target.length) {
+            console.warn("[梦晏晨] Panda 按钮容器未找到，等待重试...");
+            setTimeout(() => injectPandaButton(context), 500);
+            return;
+        }
         if ($("#meng-panda-btn").length) return;
         const btn = $(`
 <div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;">
@@ -79,7 +89,8 @@
 </div>`);
         btn.off("click").on("click", () => window.MengUI.openMengPanel(context));
         target.append(btn);
-        console.log("[梦晏晨] 🐼 已成功注入");
+        console.log("[梦晏晨] 🐼 Panda 按钮已成功注入");
+        showTip("🐼 梦晏晨插件已加载 ✅");
     }
     window.MengUI.injectPandaButton = injectPandaButton;
 
@@ -105,9 +116,9 @@
         }
     }
 
-    // ===== 安全挂载 =====
+    // ===== 安全挂载消息处理 =====
     window.MengUI.processMessageWithLearning = window.MengUI.processMessageWithLearning || ((msg,id) => {
-        try { processMessage(msg,id); } catch(e){ console.error(e); }
+        try { processMessage(msg,id); } catch(e){ console.error("[梦晏晨] processMessageWithLearning 错误", e); }
     });
 
     // ===== 延迟注入按钮 =====
@@ -131,11 +142,27 @@
         });
         bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
         bindEvent(context.event_types.USER_MESSAGE_RENDERED);
+        console.log("[梦晏晨] 已绑定消息事件");
+        showTip("🐼 消息监听已启动 ✅");
     }
 
+    // ===== 小工具：页面提示 =====
+    function showTip(text, duration=3000){
+        let tip = $("#meng-tip");
+        if(!tip.length){
+            tip = $('<div id="meng-tip" style="position:fixed;top:10px;right:10px;padding:10px 15px;background:rgba(0,0,0,0.7);color:white;font-size:0.9rem;border-radius:8px;z-index:999999;">'+text+'</div>');
+            $("body").append(tip);
+        } else {
+            tip.text(text).stop(true,true).fadeIn();
+        }
+        tip.stop(true,true).fadeIn().delay(duration).fadeOut();
+    }
+
+    // ===== 初始化入口 =====
     if (!window.__ST_IMPORT_EXPORT_MODE__) {
         $(document).ready(()=>{
             console.log("[梦晏晨] 插件已启动");
+            showTip("🐼 梦晏晨插件初始化中...");
             tryInjectPanda({ settings });
             bindEvents();
         });
