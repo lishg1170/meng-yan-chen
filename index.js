@@ -1,6 +1,6 @@
 // ======================
 // 梦晏晨 Ultimate Index
-// index.js (最终版，不再动态加载)
+// index.js (最终版，无动态加载)
 // ======================
 
 console.log("[梦晏晨] Ultimate Index 启动中...");
@@ -43,7 +43,7 @@ function getSTContext() {
     try { return window.SillyTavern?.getContext?.(); } catch (err) { return null; }
 }
 
-// ===== 安全等待（超时不抛异常） =====
+// ===== 安全等待（超时不崩溃） =====
 async function waitForCondition({ check, timeout = 15000, interval = 200, name = "Unknown" }) {
     const start = Date.now();
     while (Date.now() - start < timeout) {
