@@ -11,6 +11,69 @@
     catch (e) { console.warn("[梦晏晨] ui 模块加载失败", e); }
 
     window.MengCleaner = cleanerModule?.MengCleaner;
+    
+    // ===== 异步等待 RuleManager 加载规则 =====
+    async function initRules() {
+        if (!window.MengRuleManager) return {};
+        try {
+            const rules = await window.MengRuleManager.loadRules();
+            console.log("[梦晏晨] 规则已加载", rules);
+            return rules;
+        } catch(e) {
+            console.error("[梦晏晨] 规则加载失败", e);
+            return [];
+        }
+    }
+
+   // ===== 替换 index.js 内部 settings 初始化 =====
+   const rules = await initRules();
+
+   // 将规则映射成原来 cleanText 可用结构
+   const settings = {
+       nameFixMap: {},
+       simpleReplacements: [],
+       regexRules: [],
+       contextRules: []
+   };
+
+   rules.forEach(r => {
+       if (!r.enabled) return;
+       switch(r.type) {
+           case "nameFix": settings.nameFixMap[r.from] = r.to; break;
+           case "simple": settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true }); break;
+           case "regex": 
+               settings.regexRules.push({
+                   pattern: r.pattern,
+                   replace: r.replace || "",
+                   flags: r.flags || "g",
+                   _regex: r._regex || new RegExp(r.pattern, r.flags || "g")
+               }); 
+               break;
+          case "context": settings.contextRules.push(r); break;
+        }
+    });
+
+    // ===== 规则更新回调 =====
+    window.MengRuleManager.registerUpdateCallback((newRules) => {
+        newRules.forEach(r => {
+            if (!r.enabled) return;
+            if (r.type === "nameFix") settings.nameFixMap[r.from] = r.to;
+            else if (r.type === "simple") {
+                const exist = settings.simpleReplacements.find(e => e.from === r.from);
+                if (!exist) settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true });
+            }
+            else if (r.type === "regex") {
+                const exist = settings.regexRules.find(e => e.pattern === r.pattern);
+                if (!exist) settings.regexRules.push({
+                    pattern: r.pattern,
+                    replace: r.replace || "",
+                    flags: r.flags || "g",
+                    _regex: r._regex || new RegExp(r.pattern, r.flags || "g")
+                });
+            }
+        });
+        console.log("[梦晏晨] settings 已同步更新 ✅");
+    });
 
     // ===== 安全注入 Panda 按钮 =====
     function injectPandaButton(context) {
