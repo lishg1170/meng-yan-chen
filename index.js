@@ -687,6 +687,7 @@ async function injectPandaButton() {
                 .length
         ) {
 
+            // FIX: 即使已存在也要标记注入完成，避免重复尝试
             window.MengRuntime
                 .pandaInjected = true;
 
@@ -1215,15 +1216,25 @@ function bindMessageEvents() {
 
                     try {
 
-                        const messageId =
-                            Number(
-                                args?.[0]
-                            );
+                        // FIX: 根据事件类型正确提取消息 ID
+                        let messageId;
 
                         if (
-                            Number.isNaN(
-                                messageId
-                            )
+                            eventType === context.event_types.CHAT_CHANGED
+                        ) {
+                            // 聊天切换事件通常传递的是 chatId，不是 messageId，直接忽略清洗
+                            return;
+                        }
+
+                        // 其他消息事件第一个参数通常是 messageId
+                        const rawId = args?.[0];
+
+                        if (rawId !== undefined && rawId !== null) {
+                            messageId = Number(rawId);
+                        }
+
+                        if (
+                            Number.isNaN(messageId)
                         ) {
 
                             return;
@@ -1629,7 +1640,8 @@ async function startup() {
 
         restoreRuntimeCache();
 
-        await loadPersistSettings();
+        // FIX: 移除重复的 loadPersistSettings()，preInit 已加载
+        // await loadPersistSettings();  原错误函数名，且重复
 
         await initializeModules();
 
@@ -1895,6 +1907,8 @@ function setupUIRecovery() {
                     "♻️ Panda按钮丢失，重新注入"
                 );
 
+                // FIX: 重置注入标志，否则 injectPandaButton 会跳过
+                window.MengRuntime.pandaInjected = false;
                 injectPandaButton();
             }
 
@@ -1998,8 +2012,8 @@ function setupCleanerHotReload() {
 
             saveSettings,
 
-            loadSettings:
-                loadPersistSettings,
+            // FIX: loadSettings 正确引用
+            loadSettings,
 
             injectPandaButton,
 
@@ -2048,4 +2062,4 @@ export {
     processMessage,
 
     injectPandaButton,
-};```
+};
