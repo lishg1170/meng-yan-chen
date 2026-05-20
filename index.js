@@ -7,7 +7,7 @@
 console.log("[梦晏晨] Ultimate Index 启动中...");
 
 // ======================
-// 全局状态
+// 全局状态不要崩溃啊
 // ======================
 
 window.MengRuntime = window.MengRuntime || {};
