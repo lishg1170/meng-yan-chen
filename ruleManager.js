@@ -1,76 +1,56 @@
-// ==============================
 // ruleManager.js
-// ==============================
-
-const STORAGE_KEY = "MengRules"; // 存储在 localStorage 的 key
+// 用于管理插件规则，支持永久保存到 SillyTavern 的 extension_settings
 
 const RuleManager = {
-    /**
-     * 加载规则
-     * @returns {Array} 规则数组
-     */
+    STORAGE_KEY: "meng_rules",
+
+    // 读取规则，如果没有则返回空数组
     loadRules() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return []; // 没有存储返回空数组
-            const parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed)) return [];
-            return parsed;
+            const context = window.SillyTavern?.getContext?.();
+            const settings = context?.extension_settings || {};
+            const rulesJson = settings[this.STORAGE_KEY];
+            if (!rulesJson) return [];
+            return JSON.parse(rulesJson);
         } catch (e) {
-            console.error("[Meng][RuleManager] 读取规则失败:", e);
+            console.warn("[Meng] 读取规则失败", e);
             return [];
         }
     },
 
-    /**
-     * 保存规则
-     * @param {Array} rules 规则数组
-     */
-    saveRules(rules) {
+    // 保存规则
+    saveRules(newRules) {
         try {
-            if (!Array.isArray(rules)) throw new Error("rules必须是数组");
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            console.log("[Meng][RuleManager] 规则已保存:", rules);
+            const context = window.SillyTavern?.getContext?.();
+            if (!context?.extension_settings) return;
+            context.extension_settings[this.STORAGE_KEY] = JSON.stringify(newRules);
+
+            // 调用 ST 自带保存方法
+            if (typeof context.saveSettingsDebounced === "function") {
+                context.saveSettingsDebounced();
+            }
+
+            console.log("[Meng] 规则已保存", newRules);
         } catch (e) {
-            console.error("[Meng][RuleManager] 保存规则失败:", e);
+            console.warn("[Meng] 保存规则失败", e);
         }
     },
 
-    /**
-     * 添加新规则
-     * @param {Object} rule 单条规则对象
-     */
+    // 增加单条规则
     addRule(rule) {
         const rules = this.loadRules();
         rules.push(rule);
         this.saveRules(rules);
     },
 
-    /**
-     * 删除规则
-     * @param {Function} filterFn 筛选函数，返回true的保留，false的删除
-     */
-    removeRule(filterFn) {
+    // 删除单条规则（按 index）
+    removeRule(index) {
         const rules = this.loadRules();
-        const newRules = rules.filter(filterFn);
-        this.saveRules(newRules);
-    },
-
-    /**
-     * 清空所有规则
-     */
-    clearRules() {
-        this.saveRules([]);
+        if (index < 0 || index >= rules.length) return;
+        rules.splice(index, 1);
+        this.saveRules(rules);
     }
 };
 
-// ==============================
-// 挂全局
-// ==============================
-window.MengRules = RuleManager.loadRules();
-window.MengRulesSave = (newRules) => {
-    window.MengRules = newRules;
-    RuleManager.saveRules(newRules);
-};
-
+// ✅ 导出默认对象
 export default RuleManager;
