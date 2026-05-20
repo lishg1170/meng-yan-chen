@@ -1,44 +1,33 @@
 (async () => {
     console.log("[梦晏晨] 插件加载初始化");
 
-    // ===== 求求别崩溃了，异步安全导入模块 =====
-    let cleanerReady = false;
-    let cleanerPromise = import("./cleaner.js")
-        .then(m => {
-           window.MengCleaner = m.MengCleaner || m.default;
-           cleanerReady = true;
-        })
-        .catch(e => {
-            console.warn("[Meng] cleaner加载失败", e);
-        });
-        
-    let uiPromise = import("./ui.js")
-        .then(m => {
-            window.MengUI = m;
-            console.log("[梦晏晨] UI 加载完成");
-        })
-        .catch(e => {
-            console.warn("[梦晏晨] UI 加载失败", e);
-        });
-
-    // ==== 插件 ID 和 上下文 ====
     const PLUGIN_ID = "meng-yan-chen";
     const context = window.SillyTavern?.getContext?.();
     const extension_settings = context?.extension_settings || {};
     const saveSettingsDebounced = context?.saveSettingsDebounced || (() => {});
-    
+
     // ===== 永久规则管理 =====
-    import("./ruleManager.js").then(RuleManagerModule => {
-        const RuleManager = RuleManagerModule.default; // ✅ 必须这样
-        window.MengRules = RuleManager.loadRules();
+    if (!window.MengRuleManager) {
+        console.warn("[梦晏晨] RuleManager 未加载！");
+        window.MengRules = [];
+        window.MengRulesSave = () => {};
+    } else {
+        window.MengRules = window.MengRuleManager.loadRules();
         window.MengRulesSave = (newRules) => {
             window.MengRules = newRules;
-            RuleManager.saveRules(newRules);
+            window.MengRuleManager.saveRules(newRules);
         };
         console.log("[梦晏晨] 永久规则已加载", window.MengRules);
-    }).catch(e => {
-        console.warn("[梦晏晨] RuleManager 加载失败", e);
-    });
+    }
+
+    // ===== 异步加载其他模块 =====
+    let cleanerPromise = import("./cleaner.js")
+        .then(m => { window.MengCleaner = m.MengCleaner || m.default; })
+        .catch(e => { console.warn("[Meng] cleaner加载失败", e); });
+
+    let uiPromise = import("./ui.js")
+        .then(m => { window.MengUI = m; console.log("[梦晏晨] UI 加载完成"); })
+        .catch(e => { console.warn("[梦晏晨] UI 加载失败", e); });
 
 })();
 
