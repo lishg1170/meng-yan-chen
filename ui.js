@@ -1,20 +1,19 @@
-// ===== UI 文件: ui.js (完整容错版，含 RuleManager) =====
+// ===== UI 文件: ui.js (最终完整版，不含自动注入) =====
 
-// ================== 工具函数 ==================
 function escapeHtml(str = "") {
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-// ================== 面板核心 ==================
 function openMengPanel(context) {
     const { settings, extension_settings, saveSettingsDebounced, PLUGIN_ID } = context;
-    const extSettings = extension_settings || {};
 
+    // 防护：若 settings 无效则直接返回
+    if (!settings || typeof settings !== "object") {
+        alert("⚠️ 设置尚未加载，请关闭面板后重试");
+        return;
+    }
+
+    const extSettings = extension_settings || {};
     settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
     settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
     settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
@@ -103,9 +102,7 @@ function openMengPanel(context) {
         if (!Array.isArray(rules)) return;
         rules.forEach((item, index) => {
             if (!item) return;
-            if (typeof item === "string") {
-                rules[index] = item = { from: item, to: "", enabled: true };
-            }
+            if (typeof item === "string") rules[index] = item = { from: item, to: "", enabled: true };
             const text = item.from !== undefined
                 ? `${escapeHtml(item.from)} → ${escapeHtml(item.to || '')}`
                 : item.pattern
@@ -117,7 +114,7 @@ function openMengPanel(context) {
                     <span style="flex:1;color:${isSimple ? '#f59e0b' : '#0f766e'};word-break:break-all;font-size:0.92rem;">${text}</span>
                     <button class="meng-delete-rule" style="border:none;background:#ef4444;color:white;border-radius:6px;cursor:pointer;padding:2px 8px;">🗑</button>
                 </div>`);
-            row.find('input[type=checkbox]').on('change', function () {
+            row.find('input[type=checkbox]').on('change', function() {
                 item.enabled = this.checked;
                 saveSettingsDebounced();
             });
@@ -135,7 +132,7 @@ function openMengPanel(context) {
     renderRuleList($regexContainer, settings.regexRules);
     renderRuleList($contextContainer, settings.contextRules);
 
-    // 添加规则
+    // 添加规则事件
     $("#meng-namefix-add").on("click", () => {
         const from = $("#meng-namefix-new-from").val().trim();
         const to = $("#meng-namefix-new-to").val().trim();
@@ -172,7 +169,7 @@ function openMengPanel(context) {
         $("#meng-context-new").val('');
     });
 
-    // 预览功能
+    // 预览
     $("#meng-preview-run").on("click", async () => {
         const input = $("#meng-preview-input").val() || "";
         $previewOutput.text("正在清洗...");
@@ -180,17 +177,9 @@ function openMengPanel(context) {
         window.MengYanChen = window.MengYanChen || {};
         window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
         window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set();
-        if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
-            alert("⚠️ MengCleaner 未就绪，请稍后重试");
-            return;
-        }
-        let cleanedText = "";
-        try {
-            cleanedText = await window.MengCleaner.cleanText(input, settings);
-        } catch (err) {
-            alert("⚠️ 清洗执行失败");
-            return;
-        }
+        if (!window.MengCleaner?.cleanText) return alert("⚠️ MengCleaner 未就绪");
+        let cleaned = "";
+        try { cleaned = await window.MengCleaner.cleanText(input, settings); } catch { return alert("⚠️ 清洗失败"); }
         $pendingConfirm.empty();
         window.MengYanChen.pendingConfirmations.forEach(item => {
             const row = $(`<div style="margin-bottom:4px;">${escapeHtml(item.wrong)} → ${escapeHtml(item.correct)} <button style="margin-left:8px;">确认</button></div>`);
@@ -201,31 +190,22 @@ function openMengPanel(context) {
             });
             $pendingConfirm.append(row);
         });
-        $previewOutput.text(cleanedText);
-        $previewLog.html(`
-            📝 本轮清洗日志：
-            <span style="color:#0f766e;">名字修正 ${(settings.nameFixRules || []).length}</span>，
-            <span style="color:#f59e0b;">脏词 ${settings.simpleReplacements.length}</span>，
-            <span style="color:#3b82f6;">正则 ${settings.regexRules.length}</span>，
-            <span style="color:#f87171;">上下文删除 ${settings.contextRules.length}</span>
-        `);
+        $previewOutput.text(cleaned);
+        $previewLog.html(`📝 名字修正 ${settings.nameFixRules.length}，脏词 ${settings.simpleReplacements.length}，正则 ${settings.regexRules.length}，上下文删除 ${settings.contextRules.length}`);
         $liveLog.append(`🕒 [${new Date().toLocaleTimeString()}] 🔍 本轮预览完成\n`);
         $liveLog.scrollTop($liveLog[0].scrollHeight);
     });
 
-    // 保存设置
+    // 保存
     $("#meng-save").on("click", () => {
         try {
             extSettings[PLUGIN_ID] = structuredClone(settings);
             saveSettingsDebounced();
             alert("💾 梦晏晨设置已保存");
-        } catch (err) {
-            console.error(err);
-            alert("⚠️ 保存失败");
-        }
+        } catch (e) { alert("⚠️ 保存失败"); }
     });
 
-    // 导出规则
+    // 导出
     $("#meng-export").on("click", () => {
         const json = JSON.stringify(settings, null, 2);
         const blob = new Blob([json], { type: "application/json" });
@@ -238,11 +218,8 @@ function openMengPanel(context) {
         alert("📂 规则已导出");
     });
 
-    // 导入规则（容错增强版）
-    $("#meng-import").on("click", () => {
-        $("#meng-import-file").click();
-    });
-
+    // 导入 (容错版)
+    $("#meng-import").on("click", () => $("#meng-import-file").click());
     $("#meng-import-file").on("change", e => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -250,70 +227,32 @@ function openMengPanel(context) {
         reader.onload = () => {
             try {
                 let raw = reader.result;
-                if (typeof raw === "string") {
-                    raw = raw.replace(/^\uFEFF/, "").trim(); // 去除BOM和首尾空白
-                }
+                if (typeof raw === "string") raw = raw.replace(/^\uFEFF/, "").trim();
                 const imported = JSON.parse(raw);
-                if (typeof imported !== "object" || imported === null) {
-                    throw new Error("配置必须是一个 JSON 对象");
-                }
-
                 settings.nameFixRules = Array.isArray(imported.nameFixRules) ? imported.nameFixRules : [];
                 settings.simpleReplacements = Array.isArray(imported.simpleReplacements) ? imported.simpleReplacements : [];
                 settings.regexRules = Array.isArray(imported.regexRules) ? imported.regexRules : [];
                 settings.contextRules = Array.isArray(imported.contextRules) ? imported.contextRules : [];
-
-                // 补全 enabled 字段，并移除可能残留的 _regex
+                // 补全 enabled 并清理 _regex
                 settings.nameFixRules = settings.nameFixRules.map(i => ({ enabled: true, ...i }));
                 settings.simpleReplacements = settings.simpleReplacements.map(i => ({ enabled: true, ...i }));
-                settings.regexRules = settings.regexRules.map(i => {
-                    delete i._regex;
-                    return { enabled: true, ...i };
-                });
+                settings.regexRules = settings.regexRules.map(i => { delete i._regex; return { enabled: true, ...i }; });
                 settings.contextRules = settings.contextRules.map(i => ({ enabled: true, ...i }));
-
-                // 正则编译
-                settings.regexRules.forEach(rule => {
-                    try {
-                        rule._regex = new RegExp(rule.pattern, rule.flags || "g");
-                    } catch (err) {
-                        console.warn("[梦晏晨] regex 编译失败:", rule.pattern);
-                    }
-                });
-
-                // 安全写入 extension_settings
-                try {
-                    if (typeof extSettings === "object" && extSettings !== null) {
-                        extSettings[PLUGIN_ID] = JSON.parse(JSON.stringify(settings));
-                    } else {
-                        const ctx = window.SillyTavern?.getContext?.();
-                        if (ctx?.extension_settings) {
-                            ctx.extension_settings[PLUGIN_ID] = JSON.parse(JSON.stringify(settings));
-                        }
-                    }
-                    saveSettingsDebounced();
-                } catch (saveErr) {
-                    console.error("[梦晏晨] 保存设置失败:", saveErr);
-                    alert("⚠️ 保存设置失败，但规则已加载到面板，请手动点击保存");
-                }
-
-                // 重新渲染
+                settings.regexRules.forEach(r => { try { r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {} });
+                extSettings[PLUGIN_ID] = JSON.parse(JSON.stringify(settings));
+                saveSettingsDebounced();
                 renderRuleList($namefixContainer, settings.nameFixRules);
                 renderRuleList($simpleContainer, settings.simpleReplacements, true);
                 renderRuleList($regexContainer, settings.regexRules);
                 renderRuleList($contextContainer, settings.contextRules);
-
                 alert("📥 导入成功！");
-            } catch (err) {
-                console.error("[梦晏晨] 导入失败:", err);
-                alert("⚠️ 导入失败：" + (err.message || "文件格式错误"));
-            }
+            } catch (err) { alert("⚠️ 导入失败：" + err.message); }
         };
         reader.readAsText(file);
         e.target.value = "";
     });
 
-    // 日志折叠按钮
+    // 日志折叠
     let logVisible = true;
     const $logToggle = $('<button id="meng-log-toggle" style="position:absolute;top:12px;right:18px;padding:4px 8px;font-size:0.9rem;border-radius:6px;border:none;background:#10b981;color:white;cursor:pointer;">📜 收起日志</button>');
     $overlay.find("> div").append($logToggle);
@@ -324,15 +263,11 @@ function openMengPanel(context) {
     });
 }
 
-// ================== Panda 按钮注入 ==================
+// ================== Panda 按钮注入（由 index.js 调用） ==================
 function injectPandaButton(context) {
     const target = $("#data_bank_wand_container");
-    if (!target.length) {
-        setTimeout(() => injectPandaButton(context), 500);
-        return;
-    }
+    if (!target.length) { setTimeout(() => injectPandaButton(context), 500); return; }
     if ($("#meng-panda-btn").length) return;
-
     const btn = $(`
         <div id="meng-panda-btn" style="
             cursor:pointer; padding:6px 10px; border-radius:12px;
@@ -356,12 +291,7 @@ window.MengUI = window.MengUI || {};
 window.MengUI.openMengPanel = openMengPanel;
 window.MengUI.injectPandaButton = injectPandaButton;
 
-$(document).ready(() => {
-    const context = window.SillyTavern?.getContext?.() || {};
-    window.MengUI.injectPandaButton(context);
-});
-
-// ================== RuleManager 模块（内联完整版） ==================
+// ================== RuleManager 模块（内联） ==================
 (function() {
     let rules = [];
     const STORAGE_KEY = "meng_rule_manager_rules";
@@ -370,246 +300,100 @@ $(document).ready(() => {
     async function loadRules() {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                rules = JSON.parse(stored);
-            } else {
-                rules = [];
-            }
-            console.log(`[梦晏晨 RuleManager] 📂 已加载 ${rules.length} 条规则`);
+            rules = stored ? JSON.parse(stored) : [];
             restoreRegexCache();
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 加载规则失败", err);
-            rules = [];
-        }
+        } catch (e) { rules = []; }
     }
-
     async function saveRules() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            console.log(`[梦晏晨 RuleManager] 💾 规则已保存，共 ${rules.length} 条`);
-            notifyUpdate();
-            return true;
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 保存失败", err);
-            return false;
-        }
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); notifyUpdate(); return true; } catch { return false; }
     }
-
     async function addRule(rule) {
-        if (!rule || typeof rule !== "object") {
-            console.warn("[梦晏晨 RuleManager] addRule收到非法规则");
-            return false;
-        }
+        if (!rule || typeof rule !== "object") return false;
         if (typeof rule.enabled !== "boolean") rule.enabled = true;
-        if (!rule.id) {
-            rule.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-        }
-        rules.push(rule);
-        console.log("[梦晏晨 RuleManager] ➕ 已添加规则:", rule);
-        await saveRules();
-        return true;
+        if (!rule.id) rule.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+        rules.push(rule); await saveRules(); return true;
     }
-
-    async function removeRule(ruleId) {
-        const oldLength = rules.length;
-        rules = rules.filter(r => r.id !== ruleId);
-        if (rules.length === oldLength) {
-            console.warn(`[梦晏晨 RuleManager] ⚠️ 未找到规则ID: ${ruleId}`);
-            return false;
-        }
-        console.log(`[梦晏晨 RuleManager] 🗑️ 已删除规则 ${ruleId}`);
-        await saveRules();
-        return true;
+    async function removeRule(id) {
+        const len = rules.length;
+        rules = rules.filter(r => r.id !== id);
+        if (rules.length === len) return false;
+        await saveRules(); return true;
     }
-
-    async function updateRule(ruleId, newData) {
-        const target = rules.find(r => r.id === ruleId);
-        if (!target) {
-            console.warn(`[梦晏晨 RuleManager] ⚠️ updateRule 未找到 ${ruleId}`);
-            return false;
-        }
-        Object.assign(target, newData);
-        if (target.type === "regex") {
-            try {
-                target._regex = new RegExp(target.pattern, target.flags || "g");
-            } catch (err) {
-                console.warn("[梦晏晨 RuleManager] regex重新编译失败", target.pattern);
-            }
-        }
-        console.log("[梦晏晨 RuleManager] ✏️ 规则已更新", target);
-        await saveRules();
-        return true;
+    async function updateRule(id, data) {
+        const target = rules.find(r => r.id === id);
+        if (!target) return false;
+        Object.assign(target, data);
+        if (target.type === "regex") try { target._regex = new RegExp(target.pattern, target.flags || "g"); } catch {}
+        await saveRules(); return true;
     }
-
-    async function toggleRule(ruleId, enabled) {
-        const target = rules.find(r => r.id === ruleId);
-        if (!target) {
-            console.warn(`[梦晏晨 RuleManager] toggleRule未找到 ${ruleId}`);
-            return false;
-        }
-        target.enabled = !!enabled;
-        console.log(`[梦晏晨 RuleManager] 🔘 ${enabled ? "启用" : "禁用"}规则`, target);
-        await saveRules();
-        return true;
+    async function toggleRule(id, enabled) {
+        const target = rules.find(r => r.id === id);
+        if (!target) return false;
+        target.enabled = !!enabled; await saveRules(); return true;
     }
-
-    async function clearRules(type = null) {
-        if (!type) {
-            rules = [];
-            console.log("[梦晏晨 RuleManager] ⚠️ 已清空全部规则");
-        } else {
-            rules = rules.filter(r => r.type !== type);
-            console.log(`[梦晏晨 RuleManager] ⚠️ 已清空 ${type} 类型规则`);
-        }
+    async function clearRules(type) {
+        if (!type) rules = [];
+        else rules = rules.filter(r => r.type !== type);
         await saveRules();
     }
-
     function exportRules() {
-        try {
-            const blob = new Blob([JSON.stringify(rules, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `梦晏晨规则备份_${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            console.log("[梦晏晨 RuleManager] 📤 规则导出成功");
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 导出失败", err);
-        }
+        const blob = new Blob([JSON.stringify(rules, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `梦晏晨规则备份_${new Date().toISOString().slice(0,10)}.json`;
+        a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-
     async function importRules(json) {
         try {
             const imported = typeof json === "string" ? JSON.parse(json) : json;
-            if (!Array.isArray(imported)) {
-                console.warn("[梦晏晨 RuleManager] 导入格式错误");
-                return false;
-            }
-            imported.forEach(rule => {
-                if (rule.type === "regex") {
-                    try {
-                        rule._regex = new RegExp(rule.pattern, rule.flags || "g");
-                    } catch (err) {
-                        console.warn("[梦晏晨 RuleManager] regex导入失败", rule.pattern);
-                    }
-                }
-                if (typeof rule.enabled !== "boolean") rule.enabled = true;
-                if (!rule.id) rule.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+            if (!Array.isArray(imported)) return false;
+            imported.forEach(r => {
+                if (r.type === "regex") try { r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
+                if (typeof r.enabled !== "boolean") r.enabled = true;
+                if (!r.id) r.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
             });
-            rules = imported;
-            await saveRules();
-            console.log(`[梦晏晨 RuleManager] 📥 导入成功，共 ${rules.length} 条`);
-            return true;
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 导入失败", err);
-            return false;
-        }
+            rules = imported; await saveRules(); return true;
+        } catch { return false; }
     }
-
-    function registerUpdateCallback(callback) {
-        if (typeof callback !== "function") {
-            console.warn("[梦晏晨 RuleManager] registerUpdateCallback参数非法");
-            return;
-        }
-        updateCallbacks.push(callback);
-        console.log("[梦晏晨 RuleManager] ✅ 已注册更新监听");
+    function registerUpdateCallback(fn) {
+        if (typeof fn === "function") updateCallbacks.push(fn);
     }
-
     function notifyUpdate() {
-        console.log("[梦晏晨 RuleManager] 📢 开始广播规则更新");
-        updateCallbacks.forEach(fn => {
-            try { fn(rules); } catch (err) { console.error("[梦晏晨 RuleManager] updateCallback执行失败", err); }
-        });
+        updateCallbacks.forEach(fn => { try { fn(rules); } catch {} });
     }
-
     function restoreRegexCache() {
-        rules.forEach(rule => {
-            if (rule.type !== "regex" || rule._regex) return;
-            try {
-                rule._regex = new RegExp(rule.pattern, rule.flags || "g");
-                console.log(`[梦晏晨 RuleManager] ♻️ regex恢复成功: ${rule.pattern}`);
-            } catch (err) {
-                console.warn(`[梦晏晨 RuleManager] regex恢复失败: ${rule.pattern}`);
-            }
+        rules.forEach(r => {
+            if (r.type === "regex" && !r._regex) try { r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
         });
     }
-
-    function syncUI() {
-        if (!window.MengUI || typeof window.MengUI.renderRuleList !== "function") return;
-        const nameFix = rules.filter(r => r.type === "nameFix");
-        const simple = rules.filter(r => r.type === "simple");
-        const regex = rules.filter(r => r.type === "regex");
-        const context = rules.filter(r => r.type === "context");
-        window.MengUI.renderRuleList("#meng-namefix-container", nameFix);
-        window.MengUI.renderRuleList("#meng-simple-container", simple, true);
-        window.MengUI.renderRuleList("#meng-regex-container", regex);
-        window.MengUI.renderRuleList("#meng-context-container", context);
-    }
+    function syncUI() { /* UI 同步（暂未实现） */ }
 
     async function initialize() {
-        console.log("[梦晏晨 RuleManager] 🚀 开始初始化...");
-        await loadRules();
-        notifyUpdate();
+        await loadRules(); notifyUpdate();
         console.log(`[梦晏晨 RuleManager] ✅ 初始化完成，共 ${rules.length} 条规则`);
     }
 
-    // 定时自动保存
-    setInterval(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            console.log("[梦晏晨 RuleManager] ⏱️ 定时自动保存完成");
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 定时保存失败", err);
-        }
-    }, 1000 * 60 * 3);
+    setInterval(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); } catch {} }, 1000 * 60 * 3);
+    window.addEventListener("beforeunload", () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); } catch {} });
 
-    // 页面关闭保存
-    window.addEventListener("beforeunload", () => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            console.log("[梦晏晨 RuleManager] 💾 页面关闭前自动保存成功");
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 页面关闭自动保存失败", err);
-        }
-    });
-
-    // 暴露 API
     window.MengRuleManager = {
-        addRule,
-        removeRule,
-        updateRule,
-        toggleRule,
-        clearRules,
-        exportRules,
-        importRules,
-        registerUpdateCallback,
-        syncUI,
-        initialize,
-        getRules: () => rules,
+        addRule, removeRule, updateRule, toggleRule, clearRules,
+        exportRules, importRules, registerUpdateCallback, syncUI,
+        initialize, getRules: () => rules
     };
-
-    // 自动启动
     initialize();
 })();
 
-// ================== 全局错误日志 ==================
-window.addEventListener("error", (event) => {
-    console.error("[梦晏晨] ❌ 全局错误", event.error);
-    const $liveLog = $("#meng-live-log");
-    if ($liveLog.length) {
-        $liveLog.append(`🕒 [${new Date().toLocaleTimeString()}] ❌ 检测到错误: ${event.message || "未知错误"}\n`);
-        $liveLog.scrollTop($liveLog[0].scrollHeight);
-    }
+// 全局错误日志
+window.addEventListener("error", e => {
+    console.error("[梦晏晨] ❌ 全局错误", e.error);
+    const $l = $("#meng-live-log");
+    if ($l.length) $l.append(`🕒 [${new Date().toLocaleTimeString()}] ❌ 错误: ${e.message || "未知"}\n`);
+});
+window.addEventListener("unhandledrejection", e => {
+    console.error("[梦晏晨] ❌ Promise 错误", e.reason);
+    const $l = $("#meng-live-log");
+    if ($l.length) $l.append(`🕒 [${new Date().toLocaleTimeString()}] ❌ Promise: ${String(e.reason)}\n`);
 });
 
-window.addEventListener("unhandledrejection", (event) => {
-    console.error("[梦晏晨] ❌ Promise未捕获错误", event.reason);
-    const $liveLog = $("#meng-live-log");
-    if ($liveLog.length) {
-        $liveLog.append(`🕒 [${new Date().toLocaleTimeString()}] ❌ Promise错误: ${String(event.reason)}\n`);
-        $liveLog.scrollTop($liveLog[0].scrollHeight);
-    }
-});
-
-console.log("[梦晏晨] ui.js (含 RuleManager 完整容错版) 加载完成");
+console.log("[梦晏晨] ui.js (最终完整版) 加载完成");
