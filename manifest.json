@@ -5,10 +5,9 @@
   "author": "lishg1170",
   "version": "3.0.0",
   "js": [
-    "index.js",
     "cleaner.js",
     "ui.js",
-    "ruleManager.js"
+    "index.js"
   ],
   "loading_order": 5,
   "type": "sillytavern-extension"
