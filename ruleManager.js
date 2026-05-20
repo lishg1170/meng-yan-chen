@@ -3,7 +3,7 @@ const STORAGE_KEY = "梦晏晨_rules";
 
 export default {
     /**
-     * 加载规则
+     * 加载规则（放过我，别崩溃了）
      * @returns {Array} 规则数组
      */
     loadRules() {
