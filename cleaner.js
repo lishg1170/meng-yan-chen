@@ -23,7 +23,7 @@ const MengCleaner = {
 
         cleaned = cleaned.replace(
 
-          /\[[\s\S]*?\]|\<[\s\S]*?\>/g,
+          /<([a-zA-Z\u4e00-\u9fa5][^>\s]*)[^>]*>[\s\S]*?<\/\1>|\[[^\]]*\]/g,
 
          (m) => {
 
@@ -183,16 +183,27 @@ const MengCleaner = {
           .split(/[。！？\n]/g)
           .map(s => s.trim())
           .filter(Boolean)
-          .filter(s => s.length > 3)
-          .filter(s => /[一-龥]{2,}/.test(s))
+          .filter(s => {
+              // 状态栏保护
+              if (/^[A-Za-z]{1,10}[:：=]/.test(s)) return true;
+            
+              return s.length > 3;
+          })
+          .filter(s => {
+               // 包含保护块直接放行
+               if (/MENGBLOCK\d+/.test(s)) return true;
+
+               return /[一-龥]{2,}/.test(s);
+          })
           .filter(s => !/^(盯着|看着|像|仿佛)$/.test(s))
-          .join("。").replace(/[。]+$/,"") + "。";
+          .join("。")
+          .replace(/[。]+$/,"");
 
         //
         // 5️⃣ 删除奇葩字符
         //
         cleaned = cleaned.replace(
-            /[^a-zA-Z0-9\u4e00-\u9fa5，。！？、；：“”‘’（）《》〈〉【】『』…\s]/g,
+            /[^a-zA-Z0-9\u4e00-\u9fa5，。！？、；：“”‘’（）《》〈〉【】『』…@\u{1F300}-\u{1FAFF}\s]/gu,
             ""
         );
 
