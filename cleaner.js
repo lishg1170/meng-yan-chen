@@ -1,5 +1,5 @@
 // ======================
-// 优化版 MengCleaner
+// 完整版 MengCleaner
 // ======================
 const MengCleaner = {
     async cleanText(text, settings) {
@@ -12,8 +12,7 @@ const MengCleaner = {
             "{{user}}": "MENGUSERTOKEN",
             "{{char}}": "MENGCHARTOKEN"
         };
-
-        for (const [k,v] of Object.entries(variableMap)) {
+        for (const [k, v] of Object.entries(variableMap)) {
             cleaned = cleaned.replaceAll(k, v);
         }
 
@@ -27,14 +26,14 @@ const MengCleaner = {
             }
         );
 
+        // ⚠️ 安全挂载辅助数组
+        if (!window.MengYanChen) window.MengYanChen = {};
+        if (!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
+        if (!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
+        const { pendingConfirmations, correctNames } = window.MengYanChen;
+
         console.log("[梦晏晨] === 清洗开始 ===");
         console.log("[梦晏晨] 原文本:", text);
-
-        // ⚠️ 安全挂载辅助数组
-        if(!window.MengYanChen) window.MengYanChen = {};
-        if(!window.MengYanChen.pendingConfirmations) window.MengYanChen.pendingConfirmations = [];
-        if(!window.MengYanChen.correctNames) window.MengYanChen.correctNames = new Set();
-        const { pendingConfirmations, correctNames } = window.MengYanChen;
 
         // ===== 0️⃣ 上下文删除规则 =====
         const contextRules = settings.contextRules || [];
@@ -52,13 +51,11 @@ const MengCleaner = {
 
         // ===== 1️⃣ 名字修正 =====
         for (const rule of settings.nameFixRules || []) {
-             if (rule.enabled === false) continue;
-             const {from, to} = rule;
-             if (!from || !to) continue;
-             if (cleaned.includes(from)) {
-                 console.log(`[梦晏晨] 名字修正: "${from}" → "${to}"`);
-             }
-             cleaned = cleaned.replaceAll(from, to);
+            if (rule.enabled === false) continue;
+            const { from, to } = rule;
+            if (!from || !to) continue;
+            if (cleaned.includes(from)) console.log(`[梦晏晨] 名字修正: "${from}" → "${to}"`);
+            cleaned = cleaned.replaceAll(from, to);
         }
 
         // ===== 2️⃣ regex规则 =====
@@ -77,46 +74,46 @@ const MengCleaner = {
         // ===== 3️⃣ 简单替换 =====
         for (const rule of settings.simpleReplacements || []) {
             if (rule.enabled === false) continue;
-            if (cleaned.includes(rule.from)) {
-                console.log(`[梦晏晨] 简单替换: "${rule.from}" → "${rule.to}"`);
-            }
+            if (cleaned.includes(rule.from)) console.log(`[梦晏晨] 简单替换: "${rule.from}" → "${rule.to}"`);
             cleaned = cleaned.replaceAll(rule.from, rule.to || "");
         }
 
         // ===== 4️⃣ 句子清理与自然段优化 =====
-        // 删除短动作句（单独一句或单独一行）
-        // “盯着”“看着”“笑着”“沉默着”“站着”等孤立动作句（优化贪婪匹配）
-        // 1️⃣ 单独一行
+        const actionWords = ["盯着","看着","笑着","沉默着","站着"];
+        const actionPattern = actionWords.join("|");
+
+        // 1️⃣ 单独一行动作句
         cleaned = cleaned.replace(
-            /^(?:\{\{user\}\}|\{\{char\}\})?\s*(盯着|看着|笑着|沉默着|站着)[。！？]?\s*$/gm,
+            new RegExp(`^(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？]?\\s*$`, "gm"),
             ""
         );
 
-        // 2️⃣ 单独一句（整个句子就是动作句）
+        // 2️⃣ 单独一句
         cleaned = cleaned.replace(
-            /(?:(?:^|[。！？])\s*(?:\{\{user\}\}|\{\{char\}\})?\s*(盯着|看着|笑着|沉默着|站着)[。！？])/g
+            new RegExp(`(?:^|[。！？；\\n])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？；]?`, "g"),
             ""
         );
 
-        // 3️⃣ 半句开头孤立动作句（句首动作句，后面有逗号）
+        // 3️⃣ 半句开头动作句
         cleaned = cleaned.replace(
-            /(?:^|[。！？])\s*(?:\{\{user\}\}|\{\{char\}\})?\s*(盯着|看着|笑着|沉默着|站着)[，,]/g,
+            new RegExp(`(?:^|[。！？；])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]`, "g"),
             ""
         );
 
-        // 4️⃣ 句子中间残留（逗号前后，孤立动作句，仅清理异常情况）
+        // 4️⃣ 句中残留动作句
         cleaned = cleaned.replace(
-            /(?<=^|[。！？；])\s*[，,]\s*(?:\{\{user\}\}|\{\{char\}\})?\s*(盯着|看着|笑着|沉默着|站着)\s*[，,](?=[。！？；]|$)/g,
-            "，"
+            new RegExp(`([。！？；]|^)[，,]\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]([。！？；]|$)`, "g"),
+            "$1，$2"
         );
-            
-            // 删除残缺连接词
-            .replace(/^(像|仿佛|如同|宛若)[，。！？；,]*$/gm, "")
 
-            // 弱处理眼睛/空气残句
-            .replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ")
+        // 删除残缺连接词
+        cleaned = cleaned.replace(/^(像|仿佛|如同|宛若)[，。！？；,]*$/gm, "");
 
-            // ===== 标点压缩 =====
+        // 弱处理眼睛/空气残句
+        cleaned = cleaned.replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ");
+
+        // ===== 标点压缩 =====
+        cleaned = cleaned
             .replace(/，\s*，/g, "，")
             .replace(/。\s*。/g, "。")
             .replace(/：\s*：/g, "：")
@@ -129,31 +126,38 @@ const MengCleaner = {
             .replace(/[！!]{2,}/g, "！")
             .replace(/[？?]{2,}/g, "？")
             .replace(/^[，。！？；：]+/gm, "")
-            .replace(/[，。！？；：]\s*[，。！？；：]+/g, "。")
+            .replace(/[，。！？；：]\s*[，。！？；：]+/g, "。");
 
-            // 删除孤立代词/动作残句
-            .replace(/^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？,]*$/gm, "")
+        // 删除孤立代词/动作残句
+        cleaned = cleaned.replace(/^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？,]*$/gm, "");
 
-            // ===== 多空行压缩为 1 空行，保留自然段 =====
-            .replace(/\n{3,}/g, "\n\n")
-            // 中文正文不增加空格，压缩多空格为 1
-            .replace(/[ \t]{2,}/g, " ");
+        // ===== 多空行压缩为 1 空行 =====
+        cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+        // 中文正文不增加空格，压缩多空格
+        cleaned = cleaned.replace(/[ \t]{2,}/g, "");
 
         // ===== 分割自然段（2~4句随机为一个自然段） =====
-        const sentences = cleaned.split(/(?<=[。！？])/g).map(s => s.trim()).filter(s => s.length > 0);
+        const sentences = cleaned.split(/([。！？])/)
+            .reduce((acc, val, idx, arr) => {
+                if (/[。！？]/.test(val)) {
+                    acc.push((arr[idx-1] || '') + val);
+                }
+                return acc;
+            }, [])
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
         let paragraph = [];
         let paragraphs = [];
         for (let i = 0; i < sentences.length; i++) {
             paragraph.push(sentences[i]);
-    
-           // 随机生成本段句数 2~4
-           const randLength = 2 + Math.floor(Math.random() * 3); // 2,3,4
-    
-           // 当前段达到随机长度或者到达最后一句就换段
-           if (paragraph.length >= randLength || i === sentences.length - 1) {
-               paragraphs.push(paragraph.join(""));
-               paragraph = [];
-           }
+
+            const randLength = 2 + Math.floor(Math.random() * 3); // 2~4句
+
+            if (paragraph.length >= randLength || i === sentences.length - 1) {
+                paragraphs.push(paragraph.join(""));
+                paragraph = [];
+            }
         }
         cleaned = paragraphs.join("\n\n");
 
@@ -167,7 +171,7 @@ const MengCleaner = {
         cleaned = cleaned.replace(/MENGBLOCK(\d+)/g, (_, i) => protectedBlocks[i]);
 
         // ==== user和char变量恢复 ====
-        for (const [k,v] of Object.entries(variableMap)) {
+        for (const [k, v] of Object.entries(variableMap)) {
             cleaned = cleaned.replaceAll(v, k);
         }
 
