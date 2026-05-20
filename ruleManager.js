@@ -1,46 +1,51 @@
 // RuleManager.js
 
-// 默认规则示例
-const DEFAULT_RULES = [
-    { type: "nameFix", from: "林晟", to: "林晨", enabled: true },
-    { type: "nameFix", from: "林辰", to: "林晨", enabled: true },
-    { type: "simple", from: "眸子", to: "眼睛", enabled: true },
-    // regex示例
-    { type: "regex", pattern: "\\s{2,}", replace: " ", flags: "g", enabled: true },
-    // context规则示例
-    { type: "context", pattern: "敏感词", enabled: true }
-];
+(function() {
+    console.log("[梦晏晨 RuleManager] 脚本加载开始");
 
-class RuleManager {
-    constructor() {
+    // ===== 默认规则 =====
+    const DEFAULT_RULES = [
+        { type: "nameFix", from: "林晟", to: "林晨", enabled: true },
+        { type: "nameFix", from: "林辰", to: "林晨", enabled: true },
+        { type: "simple", from: "眸子", to: "眼睛", enabled: true },
+        { type: "regex", pattern: "\\s{2,}", replace: " ", flags: "g", enabled: true },
+        { type: "context", pattern: "敏感词", enabled: true }
+    ];
+
+    // ===== RuleManager 类 =====
+    function RuleManager() {
+        console.log("[梦晏晨 RuleManager] 初始化实例");
         this._rules = [];
         this._updateCallbacks = [];
         this._initialized = false;
     }
 
-    // ===== 加载规则 =====
-    async loadRules() {
+    // ===== 异步加载规则 =====
+    RuleManager.prototype.loadRules = async function() {
+        console.log("[梦晏晨 RuleManager] loadRules 开始");
         try {
-            // 尝试从 TauriTavern extension_settings 读取
             const context = window.SillyTavern?.getContext?.();
             const PLUGIN_ID = "meng-yan-chen";
             const savedRules = context?.extension_settings?.[PLUGIN_ID]?.rules;
             if (savedRules && Array.isArray(savedRules)) {
                 this._rules = savedRules;
+                console.log("[梦晏晨 RuleManager] 从 extension_settings 加载规则 ✅", savedRules);
             } else {
                 this._rules = [...DEFAULT_RULES];
+                console.log("[梦晏晨 RuleManager] 使用默认规则 ✅", DEFAULT_RULES);
             }
             this._initialized = true;
             return this._rules;
         } catch (err) {
-            console.warn("[梦晏晨] RuleManager loadRules 错误:", err);
+            console.error("[梦晏晨 RuleManager] loadRules 错误 ❌", err);
             this._rules = [...DEFAULT_RULES];
             return this._rules;
         }
-    }
+    };
 
-    // ===== 保存规则 =====
-    async saveRules(rules) {
+    // ===== 异步保存规则 =====
+    RuleManager.prototype.saveRules = async function(rules) {
+        console.log("[梦晏晨 RuleManager] saveRules 开始", rules);
         try {
             if (!Array.isArray(rules)) throw new Error("保存的规则必须是数组");
             this._rules = rules;
@@ -56,33 +61,36 @@ class RuleManager {
 
             // 调用回调
             this._updateCallbacks.forEach(cb => {
-                try { cb(this._rules); } catch (err) { console.error("[梦晏晨] RuleManager callback 错误:", err); }
+                try { cb(this._rules); } catch (err) { console.error("[梦晏晨 RuleManager callback 错误]:", err); }
             });
 
+            console.log("[梦晏晨 RuleManager] saveRules 成功 ✅");
             return true;
         } catch (err) {
-            console.error("[梦晏晨] RuleManager saveRules 错误:", err);
+            console.error("[梦晏晨 RuleManager] saveRules 错误 ❌", err);
             return false;
         }
-    }
+    };
 
     // ===== 注册更新回调 =====
-    registerUpdateCallback(cb) {
+    RuleManager.prototype.registerUpdateCallback = function(cb) {
         if (typeof cb === "function") {
             this._updateCallbacks.push(cb);
+            console.log("[梦晏晨 RuleManager] 注册更新回调 ✅");
         } else {
-            console.warn("[梦晏晨] RuleManager registerUpdateCallback 参数不是函数");
+            console.warn("[梦晏晨 RuleManager] registerUpdateCallback 参数不是函数 ❌");
         }
-    }
+    };
 
     // ===== 获取所有规则 =====
-    getRules() {
+    RuleManager.prototype.getRules = function() {
         return this._rules;
-    }
-}
+    };
 
-// 单例
-const ruleManagerInstance = new RuleManager();
+    // ===== 单例挂载 =====
+    const ruleManagerInstance = new RuleManager();
+    window.RuleManager = RuleManager;
+    window.MengRuleManager = ruleManagerInstance;
 
-export default ruleManagerInstance;
-export { RuleManager };
+    console.log("[梦晏晨 RuleManager] 脚本加载完成 ✅ 单例已挂载到 window.MengRuleManager");
+})();
