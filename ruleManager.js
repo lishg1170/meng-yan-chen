@@ -1,54 +1,88 @@
 // RuleManager.js
-// TauriTavern 专用规则管理器
-const RuleManager = (() => {
-    let _rules = [];
-    let _updateCallbacks = [];
+
+// 默认规则示例
+const DEFAULT_RULES = [
+    { type: "nameFix", from: "林晟", to: "林晨", enabled: true },
+    { type: "nameFix", from: "林辰", to: "林晨", enabled: true },
+    { type: "simple", from: "眸子", to: "眼睛", enabled: true },
+    // regex示例
+    { type: "regex", pattern: "\\s{2,}", replace: " ", flags: "g", enabled: true },
+    // context规则示例
+    { type: "context", pattern: "敏感词", enabled: true }
+];
+
+class RuleManager {
+    constructor() {
+        this._rules = [];
+        this._updateCallbacks = [];
+        this._initialized = false;
+    }
 
     // ===== 加载规则 =====
-    async function loadRules() {
+    async loadRules() {
         try {
+            // 尝试从 TauriTavern extension_settings 读取
             const context = window.SillyTavern?.getContext?.();
-            if (!context) throw new Error("未获取到 context");
-            const savedRules = context.extension_settings?.["meng-yan-chen"]?.rules || [];
-            _rules = Array.isArray(savedRules) ? savedRules : [];
-            console.log("[梦晏晨 RuleManager] 规则已加载", _rules.length, "条");
+            const PLUGIN_ID = "meng-yan-chen";
+            const savedRules = context?.extension_settings?.[PLUGIN_ID]?.rules;
+            if (savedRules && Array.isArray(savedRules)) {
+                this._rules = savedRules;
+            } else {
+                this._rules = [...DEFAULT_RULES];
+            }
+            this._initialized = true;
+            return this._rules;
         } catch (err) {
-            console.warn("[梦晏晨 RuleManager] 加载规则失败:", err);
-            _rules = [];
+            console.warn("[梦晏晨] RuleManager loadRules 错误:", err);
+            this._rules = [...DEFAULT_RULES];
+            return this._rules;
         }
-        return _rules;
     }
 
     // ===== 保存规则 =====
-    async function saveRules(newRules) {
+    async saveRules(rules) {
         try {
-            const context = window.SillyTavern?.getContext?.();
-            if (!context) throw new Error("未获取到 context");
-            context.extension_settings["meng-yan-chen"] = context.extension_settings["meng-yan-chen"] || {};
-            context.extension_settings["meng-yan-chen"].rules = newRules;
-            if (typeof context.saveSettingsDebounced === "function") context.saveSettingsDebounced();
-            _rules = newRules;
-            console.log("[梦晏晨 RuleManager] 规则已保存", _rules.length, "条");
+            if (!Array.isArray(rules)) throw new Error("保存的规则必须是数组");
+            this._rules = rules;
 
-            // 回调通知
-            _updateCallbacks.forEach(cb => {
-                try { cb(_rules); } catch (e) { console.warn("[梦晏晨 RuleManager 回调失败]", e); }
+            const context = window.SillyTavern?.getContext?.();
+            const PLUGIN_ID = "meng-yan-chen";
+            if (!context.extension_settings[PLUGIN_ID]) context.extension_settings[PLUGIN_ID] = {};
+            context.extension_settings[PLUGIN_ID].rules = this._rules;
+
+            if (typeof context.saveSettingsDebounced === "function") {
+                context.saveSettingsDebounced();
+            }
+
+            // 调用回调
+            this._updateCallbacks.forEach(cb => {
+                try { cb(this._rules); } catch (err) { console.error("[梦晏晨] RuleManager callback 错误:", err); }
             });
+
+            return true;
         } catch (err) {
-            console.error("[梦晏晨 RuleManager] 保存规则失败:", err);
+            console.error("[梦晏晨] RuleManager saveRules 错误:", err);
+            return false;
         }
     }
 
-    // ===== 注册规则更新回调 =====
-    function registerUpdateCallback(cb) {
-        if (typeof cb === "function") _updateCallbacks.push(cb);
+    // ===== 注册更新回调 =====
+    registerUpdateCallback(cb) {
+        if (typeof cb === "function") {
+            this._updateCallbacks.push(cb);
+        } else {
+            console.warn("[梦晏晨] RuleManager registerUpdateCallback 参数不是函数");
+        }
     }
 
-    return {
-        loadRules,
-        saveRules,
-        registerUpdateCallback,
-    };
-})();
+    // ===== 获取所有规则 =====
+    getRules() {
+        return this._rules;
+    }
+}
 
-export default RuleManager;
+// 单例
+const ruleManagerInstance = new RuleManager();
+
+export default ruleManagerInstance;
+export { RuleManager };
