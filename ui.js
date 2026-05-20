@@ -1,4 +1,4 @@
-// ===== UI 文件: ui.js (完整修复版) =====
+// ===== UI 文件: ui.js (完整容错版，含 RuleManager) =====
 
 // ================== 工具函数 ==================
 function escapeHtml(str = "") {
@@ -13,8 +13,8 @@ function escapeHtml(str = "") {
 // ================== 面板核心 ==================
 function openMengPanel(context) {
     const { settings, extension_settings, saveSettingsDebounced, PLUGIN_ID } = context;
+    const extSettings = extension_settings || {};
 
-    // 确保数组存在
     settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
     settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
     settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
@@ -23,17 +23,8 @@ function openMengPanel(context) {
     if ($("#meng-overlay").length) return;
 
     const html = `
-<div id="meng-overlay" style="
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.65); z-index:999999;
-    display:flex; align-items:center; justify-content:center;
-    backdrop-filter:blur(6px);
-">
-    <div style="
-        width:90%; max-width:520px; max-height:85vh; overflow:auto;
-        background:#e6f4ea; border-radius:18px; padding:18px;
-        color:#0f172a; box-shadow:0 0 25px rgba(0,0,0,0.5);
-    ">
+<div id="meng-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.65);z-index:999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+    <div style="width:90%;max-width:520px;max-height:85vh;overflow:auto;background:#e6f4ea;border-radius:18px;padding:18px;color:#0f172a;box-shadow:0 0 25px rgba(0,0,0,0.5);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div style="font-size:1.2rem;font-weight:bold;">🐼 梦晏晨 · 文辞净斋</div>
             <div id="meng-close" style="cursor:pointer;font-size:1.2rem;">✕</div>
@@ -44,18 +35,12 @@ function openMengPanel(context) {
 </div>`;
 
     $("body").append(html);
-
     const $overlay = $("#meng-overlay");
     const $content = $("#meng-content-container");
-
-    // 关闭按钮
     $("#meng-close").on("click", () => $overlay.remove());
 
-    // 动态构建内容并绑定事件
     $content.html(`
-        <!-- 名字修正 -->
-        <details open>
-            <summary style="font-weight:bold;color:#0f766e;cursor:pointer;">🔤 名字修正</summary>
+        <details open><summary style="font-weight:bold;color:#0f766e;cursor:pointer;">🔤 名字修正</summary>
             <div id="meng-namefix-container" style="margin-top:8px;"></div>
             <div style="display:flex;gap:4px;margin-top:6px;">
                 <input id="meng-namefix-new-from" placeholder="错误名" style="flex:1;">
@@ -63,9 +48,7 @@ function openMengPanel(context) {
                 <button id="meng-namefix-add">➕</button>
             </div>
         </details>
-        <!-- 简单替换 -->
-        <details open>
-            <summary style="font-weight:bold;color:#f59e0b;cursor:pointer;">📝 脏词/简单替换</summary>
+        <details open><summary style="font-weight:bold;color:#f59e0b;cursor:pointer;">📝 脏词/简单替换</summary>
             <div id="meng-simple-container" style="margin-top:8px;"></div>
             <div style="display:flex;gap:4px;margin-top:6px;">
                 <input id="meng-simple-new-from" placeholder="原词" style="flex:1;">
@@ -73,9 +56,7 @@ function openMengPanel(context) {
                 <button id="meng-simple-add">➕</button>
             </div>
         </details>
-        <!-- 正则 -->
-        <details open>
-            <summary style="font-weight:bold;color:#3b82f6;cursor:pointer;">🔍 正则替换</summary>
+        <details open><summary style="font-weight:bold;color:#3b82f6;cursor:pointer;">🔍 正则替换</summary>
             <div id="meng-regex-container" style="margin-top:8px;"></div>
             <div style="display:flex;gap:4px;margin-top:6px;">
                 <input id="meng-regex-new-pattern" placeholder="正则 pattern" style="flex:1;">
@@ -83,30 +64,23 @@ function openMengPanel(context) {
                 <button id="meng-regex-add">➕</button>
             </div>
         </details>
-        <!-- 上下文删除 -->
-        <details open>
-            <summary style="font-weight:bold;color:#f87171;cursor:pointer;">🗑️ 上下文删除</summary>
+        <details open><summary style="font-weight:bold;color:#f87171;cursor:pointer;">🗑️ 上下文删除</summary>
             <div id="meng-context-container" style="margin-top:8px;"></div>
             <div style="display:flex;gap:4px;margin-top:6px;">
                 <input id="meng-context-new" placeholder="待删除内容" style="flex:1;">
                 <button id="meng-context-add">➕</button>
             </div>
         </details>
-        <!-- 预览区域 -->
-        <details open>
-            <summary style="font-weight:bold;color:#7c3aed;cursor:pointer;">🔬 实时预览</summary>
+        <details open><summary style="font-weight:bold;color:#7c3aed;cursor:pointer;">🔬 实时预览</summary>
             <textarea id="meng-preview-input" placeholder="在此粘贴文本..." style="width:100%;height:60px;margin-top:8px;"></textarea>
             <button id="meng-preview-run" style="margin-top:4px;">▶ 预览清洗</button>
             <div id="meng-preview-output" style="background:#ffffff;border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap;max-height:120px;overflow:auto;"></div>
             <div id="meng-preview-log" style="font-size:0.8rem;color:#475569;margin-top:4px;"></div>
             <div id="meng-pending-confirm" style="margin-top:4px;"></div>
         </details>
-        <!-- 实时日志 -->
-        <details>
-            <summary style="font-weight:bold;color:#0f172a;cursor:pointer;">📜 实时日志</summary>
+        <details><summary style="font-weight:bold;color:#0f172a;cursor:pointer;">📜 实时日志</summary>
             <pre id="meng-live-log" style="background:#f1f5f9;border-radius:8px;padding:8px;max-height:150px;overflow:auto;font-size:0.8rem;margin-top:6px;"></pre>
         </details>
-        <!-- 操作栏 -->
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">
             <button id="meng-save">💾 保存设置</button>
             <button id="meng-export">📤 导出规则</button>
@@ -115,7 +89,6 @@ function openMengPanel(context) {
         </div>
     `);
 
-    // 获取各个容器和元素
     const $namefixContainer = $("#meng-namefix-container");
     const $simpleContainer = $("#meng-simple-container");
     const $regexContainer = $("#meng-regex-container");
@@ -125,52 +98,44 @@ function openMengPanel(context) {
     const $pendingConfirm = $("#meng-pending-confirm");
     const $liveLog = $("#meng-live-log");
 
-    // 渲染列表函数
     function renderRuleList(container, rules, isSimple = false) {
         container.empty();
         if (!Array.isArray(rules)) return;
-
         rules.forEach((item, index) => {
             if (!item) return;
             if (typeof item === "string") {
                 rules[index] = item = { from: item, to: "", enabled: true };
             }
-
             const text = item.from !== undefined
                 ? `${escapeHtml(item.from)} → ${escapeHtml(item.to || '')}`
                 : item.pattern
                     ? `${escapeHtml(item.pattern)} → ${escapeHtml(item.replace || '(删除)')}`
                     : escapeHtml(JSON.stringify(item));
-
             const row = $(`
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px;background:#d9f0e8;border-radius:8px;">
                     <input type="checkbox" ${item.enabled ? 'checked' : ''}>
                     <span style="flex:1;color:${isSimple ? '#f59e0b' : '#0f766e'};word-break:break-all;font-size:0.92rem;">${text}</span>
                     <button class="meng-delete-rule" style="border:none;background:#ef4444;color:white;border-radius:6px;cursor:pointer;padding:2px 8px;">🗑</button>
                 </div>`);
-
             row.find('input[type=checkbox]').on('change', function () {
                 item.enabled = this.checked;
                 saveSettingsDebounced();
             });
-
             row.find('.meng-delete-rule').on('click', () => {
                 rules.splice(index, 1);
                 renderRuleList(container, rules, isSimple);
                 saveSettingsDebounced();
             });
-
             container.append(row);
         });
     }
 
-    // 初始渲染
     renderRuleList($namefixContainer, settings.nameFixRules);
     renderRuleList($simpleContainer, settings.simpleReplacements, true);
     renderRuleList($regexContainer, settings.regexRules);
     renderRuleList($contextContainer, settings.contextRules);
 
-    // 添加规则事件
+    // 添加规则
     $("#meng-namefix-add").on("click", () => {
         const from = $("#meng-namefix-new-from").val().trim();
         const to = $("#meng-namefix-new-to").val().trim();
@@ -180,7 +145,6 @@ function openMengPanel(context) {
         saveSettingsDebounced();
         $("#meng-namefix-new-from,#meng-namefix-new-to").val('');
     });
-
     $("#meng-simple-add").on("click", () => {
         const from = $("#meng-simple-new-from").val().trim();
         const to = $("#meng-simple-new-to").val().trim();
@@ -190,7 +154,6 @@ function openMengPanel(context) {
         saveSettingsDebounced();
         $("#meng-simple-new-from,#meng-simple-new-to").val('');
     });
-
     $("#meng-regex-add").on("click", () => {
         const pattern = $("#meng-regex-new-pattern").val().trim();
         const replace = $("#meng-regex-new-replace").val().trim();
@@ -200,7 +163,6 @@ function openMengPanel(context) {
         saveSettingsDebounced();
         $("#meng-regex-new-pattern,#meng-regex-new-replace").val('');
     });
-
     $("#meng-context-add").on("click", () => {
         const val = $("#meng-context-new").val().trim();
         if (!val) return alert("请填写上下文删除内容");
@@ -215,33 +177,23 @@ function openMengPanel(context) {
         const input = $("#meng-preview-input").val() || "";
         $previewOutput.text("正在清洗...");
         $previewLog.text("正在生成日志...");
-
         window.MengYanChen = window.MengYanChen || {};
         window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
         window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set();
-
         if (!window.MengCleaner || typeof window.MengCleaner.cleanText !== 'function') {
             alert("⚠️ MengCleaner 未就绪，请稍后重试");
             return;
         }
-
         let cleanedText = "";
         try {
             cleanedText = await window.MengCleaner.cleanText(input, settings);
         } catch (err) {
-            console.error("[梦晏晨] 清洗失败", err);
             alert("⚠️ 清洗执行失败");
             return;
         }
-
         $pendingConfirm.empty();
         window.MengYanChen.pendingConfirmations.forEach(item => {
-            const row = $(`
-                <div style="margin-bottom:4px;">
-                    ${escapeHtml(item.wrong)} → ${escapeHtml(item.correct)}
-                    <button style="margin-left:8px;">确认</button>
-                </div>
-            `);
+            const row = $(`<div style="margin-bottom:4px;">${escapeHtml(item.wrong)} → ${escapeHtml(item.correct)} <button style="margin-left:8px;">确认</button></div>`);
             row.find("button").on("click", () => {
                 window.MengYanChen.correctNames.add(item.correct);
                 window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations.filter(x => x !== item);
@@ -249,7 +201,6 @@ function openMengPanel(context) {
             });
             $pendingConfirm.append(row);
         });
-
         $previewOutput.text(cleanedText);
         $previewLog.html(`
             📝 本轮清洗日志：
@@ -265,11 +216,9 @@ function openMengPanel(context) {
     // 保存设置
     $("#meng-save").on("click", () => {
         try {
-            extension_settings[PLUGIN_ID] = structuredClone(settings);
+            extSettings[PLUGIN_ID] = structuredClone(settings);
             saveSettingsDebounced();
             alert("💾 梦晏晨设置已保存");
-            $liveLog.append(`🕒 [${new Date().toLocaleTimeString()}] 💾 设置已保存\n`);
-            $liveLog.scrollTop($liveLog[0].scrollHeight);
         } catch (err) {
             console.error(err);
             alert("⚠️ 保存失败");
@@ -289,7 +238,7 @@ function openMengPanel(context) {
         alert("📂 规则已导出");
     });
 
-    // 导入规则
+    // 导入规则（容错增强版）
     $("#meng-import").on("click", () => {
         $("#meng-import-file").click();
     });
@@ -300,22 +249,55 @@ function openMengPanel(context) {
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                const imported = JSON.parse(reader.result);
-                if (typeof imported !== "object" || imported === null) throw new Error("无效配置");
+                let raw = reader.result;
+                if (typeof raw === "string") {
+                    raw = raw.replace(/^\uFEFF/, "").trim(); // 去除BOM和首尾空白
+                }
+                const imported = JSON.parse(raw);
+                if (typeof imported !== "object" || imported === null) {
+                    throw new Error("配置必须是一个 JSON 对象");
+                }
 
-                settings.nameFixRules = (Array.isArray(imported.nameFixRules) ? imported.nameFixRules : []).map(i => ({ enabled:true, ...i }));
-                settings.simpleReplacements = (Array.isArray(imported.simpleReplacements) ? imported.simpleReplacements : []).map(i => ({ enabled:true, ...i }));
-                settings.regexRules = (Array.isArray(imported.regexRules) ? imported.regexRules : []).map(i => ({ enabled:true, ...i }));
-                settings.contextRules = (Array.isArray(imported.contextRules) ? imported.contextRules : []).map(i => ({ enabled:true, ...i }));
+                settings.nameFixRules = Array.isArray(imported.nameFixRules) ? imported.nameFixRules : [];
+                settings.simpleReplacements = Array.isArray(imported.simpleReplacements) ? imported.simpleReplacements : [];
+                settings.regexRules = Array.isArray(imported.regexRules) ? imported.regexRules : [];
+                settings.contextRules = Array.isArray(imported.contextRules) ? imported.contextRules : [];
 
+                // 补全 enabled 字段，并移除可能残留的 _regex
+                settings.nameFixRules = settings.nameFixRules.map(i => ({ enabled: true, ...i }));
+                settings.simpleReplacements = settings.simpleReplacements.map(i => ({ enabled: true, ...i }));
+                settings.regexRules = settings.regexRules.map(i => {
+                    delete i._regex;
+                    return { enabled: true, ...i };
+                });
+                settings.contextRules = settings.contextRules.map(i => ({ enabled: true, ...i }));
+
+                // 正则编译
                 settings.regexRules.forEach(rule => {
-                    try { rule._regex = new RegExp(rule.pattern, rule.flags || "g"); } 
-                    catch(err) { console.warn("[梦晏晨] regex 编译失败:", rule.pattern); }
+                    try {
+                        rule._regex = new RegExp(rule.pattern, rule.flags || "g");
+                    } catch (err) {
+                        console.warn("[梦晏晨] regex 编译失败:", rule.pattern);
+                    }
                 });
 
-                extension_settings[PLUGIN_ID] = JSON.parse(JSON.stringify(settings));
-                saveSettingsDebounced();
+                // 安全写入 extension_settings
+                try {
+                    if (typeof extSettings === "object" && extSettings !== null) {
+                        extSettings[PLUGIN_ID] = JSON.parse(JSON.stringify(settings));
+                    } else {
+                        const ctx = window.SillyTavern?.getContext?.();
+                        if (ctx?.extension_settings) {
+                            ctx.extension_settings[PLUGIN_ID] = JSON.parse(JSON.stringify(settings));
+                        }
+                    }
+                    saveSettingsDebounced();
+                } catch (saveErr) {
+                    console.error("[梦晏晨] 保存设置失败:", saveErr);
+                    alert("⚠️ 保存设置失败，但规则已加载到面板，请手动点击保存");
+                }
 
+                // 重新渲染
                 renderRuleList($namefixContainer, settings.nameFixRules);
                 renderRuleList($simpleContainer, settings.simpleReplacements, true);
                 renderRuleList($regexContainer, settings.regexRules);
@@ -324,7 +306,7 @@ function openMengPanel(context) {
                 alert("📥 导入成功！");
             } catch (err) {
                 console.error("[梦晏晨] 导入失败:", err);
-                alert("⚠️ 文件格式错误");
+                alert("⚠️ 导入失败：" + (err.message || "文件格式错误"));
             }
         };
         reader.readAsText(file);
@@ -361,32 +343,25 @@ function injectPandaButton(context) {
             <span>🐼</span><span>梦晏晨</span>
         </div>
     `);
-
     btn.hover(
         () => btn.css("background", "rgba(0,128,0,0.25)"),
         () => btn.css("background", "rgba(0,128,0,0.15)")
     );
-
-    btn.on("click", () => {
-        openMengPanel(context);
-    });
-
+    btn.on("click", () => openMengPanel(context));
     target.append(btn);
     console.log("[梦晏晨] 🐼 Panda 按钮注入成功");
 }
 
-// 挂载全局 API
 window.MengUI = window.MengUI || {};
 window.MengUI.openMengPanel = openMengPanel;
 window.MengUI.injectPandaButton = injectPandaButton;
 
-// 自动注入（页面就绪时）
 $(document).ready(() => {
     const context = window.SillyTavern?.getContext?.() || {};
     window.MengUI.injectPandaButton(context);
 });
 
-// ================== RuleManager 模块（内联） ==================
+// ================== RuleManager 模块（内联完整版） ==================
 (function() {
     let rules = [];
     const STORAGE_KEY = "meng_rule_manager_rules";
@@ -637,4 +612,4 @@ window.addEventListener("unhandledrejection", (event) => {
     }
 });
 
-console.log("[梦晏晨] ui.js (含 RuleManager) 加载完成");
+console.log("[梦晏晨] ui.js (含 RuleManager 完整容错版) 加载完成");
