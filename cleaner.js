@@ -122,6 +122,30 @@ const MengCleaner = {
 
         // ===== 残句修复 =====
 
+        // 1️⃣ 单独一行动作句
+        .replace(
+            new RegExp(`^(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？]?\\s*$`, "gm"),
+            ""
+        )
+
+        // 2️⃣ 单独一句
+        .replace(
+            new RegExp(`(?:^|[。！？；\\n])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？；]?`, "g"),
+            ""
+        )
+
+        // 3️⃣ 半句开头动作句
+        .replace(
+            new RegExp(`(?:^|[。！？；])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]`, "g"),
+            ""
+        )
+
+        // 4️⃣ 句中残留动作句
+        .replace(
+            new RegExp(`([。！？；]|^)[，,]\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]([。！？；]|$)`, "g"),
+            "$1，$2"
+        )
+
         // 改成弱处理（不破坏句子）
         .replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ")
 
@@ -179,22 +203,36 @@ const MengCleaner = {
         // ===== “的”修复 =====
         .replace(/(?<=\S)的([，。])/g, "$1")
         
-        cleaned = cleaned
-             .split(/(?<=[。！？\n])/g) // 按句号/感叹号/问号/换行拆分，同时保留拆分符
-             .map(s => s.trim())
-             .filter(s => s.length > 0) // 不丢短句
-             .filter(s => {
-                 // 状态栏保护
-                 if (/^[A-Za-z]{1,10}[:：=]/.test(s)) return true;
+        // ===== 多空行压缩为 1 空行 =====
+        .replace(/\n{3,}/g, "\n\n");
+        // 中文正文不增加空格，压缩多空格
+        .replace(/[ \t]{2,}/g, "");
 
-                 // 包含保护块直接放行
-                 if (/MENGBLOCK\d+/.test(s)) return true;
+        // ===== 分割自然段（2~4句随机为一个自然段） =====
+        const sentences = cleaned.split(/([。！？])/)
+            .reduce((acc, val, idx, arr) => {
+                if (/[。！？]/.test(val)) {
+                    acc.push((arr[idx-1] || '') + val);
+                }
+                return acc;
+            }, [])
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
 
-                 return true; // 其它全部保留
-            })
-            .join("") // 保留原来的换行和句号，不再破坏段落
-            .replace(/\n{2,}/g, "\n") // 压缩多余空行
-            .replace(/[。]{2,}/g, "。"); // 多余句号压缩
+        let paragraph = [];
+        let paragraphs = [];
+        for (let i = 0; i < sentences.length; i++) {
+            paragraph.push(sentences[i]);
+
+            const randLength = 2 + Math.floor(Math.random() * 3); // 2~4句
+
+            if (paragraph.length >= randLength || i === sentences.length - 1) {
+                paragraphs.push(paragraph.join(""));
+                paragraph = [];
+            }
+        }
+        cleaned = paragraphs.join("\n\n");
+        
 
         //
         // 5️⃣ 删除奇葩字符
