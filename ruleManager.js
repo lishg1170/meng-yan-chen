@@ -3,13 +3,15 @@
 // 梦晏晨规则管理器（Tauri/iPad 原生适配版）
 // ============================
 
+import { MengCleaner } from "./clear.js"; // 保持独立文件
+
 // 默认 GitHub 初始化规则文件（空文件也行）
 const DEFAULT_RULES_URL = "https://raw.githubusercontent.com/lishg1170/meng-yan-chen/refs/heads/main/menganchen.json";
 
 // 本地存储 key
 const STORAGE_KEY = "梦晏晨_rules";
 
-export default {
+const RuleManager = {
     /**
      * 加载规则
      * 1️⃣ 先尝试本地存储
@@ -66,7 +68,7 @@ export default {
 
     /**
      * 添加新规则
-     * @param {Object} rule { from, to, enabled }
+     * @param {Object} rule { from, to, type, enabled }
      */
     async addRule(rule) {
         if (!rule || typeof rule !== "object") return;
@@ -96,5 +98,29 @@ export default {
         if (!Array.isArray(newRules)) return;
         this.saveRules(newRules);
         console.log("[梦晏晨 RuleManager] 已覆盖全部规则");
+    },
+
+    /**
+     * 异步清洗文本（自动加载规则）
+     * @param {string} text 原文本
+     * @returns {Promise<string>} 清洗后的文本
+     */
+    async cleanTextWithRules(text) {
+        try {
+            const rules = await this.loadRules();
+            const settings = {
+                nameFixRules: rules.filter(r => r.type === "nameFix"),
+                regexRules: rules.filter(r => r.type === "regex"),
+                simpleReplacements: rules.filter(r => r.type === "simple"),
+                contextRules: rules.filter(r => r.type === "context")
+            };
+            const cleanedText = await MengCleaner.cleanText(text, settings);
+            return cleanedText;
+        } catch (err) {
+            console.error("[梦晏晨 RuleManager] 清洗失败:", err);
+            return text;
+        }
     }
 };
+
+export default RuleManager;
