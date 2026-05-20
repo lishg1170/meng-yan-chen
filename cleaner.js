@@ -6,6 +6,16 @@ const MengCleaner = {
         if (!text) return text;
 
         let cleaned = text;
+        
+        // ==== user和char变量保护 ====
+        const variableMap = {
+            "{{user}}": "MENGUSERTOKEN",
+            "{{char}}": "MENGCHARTOKEN"
+        };
+
+        for (const [k,v] of Object.entries(variableMap)) {
+            cleaned = cleaned.replaceAll(k, v);
+        }
 
         // ===== 文字提示 =====
         console.log("[梦晏晨] === 清洗开始 ===");
@@ -105,7 +115,7 @@ const MengCleaner = {
 
         // “像。”“仿佛。”这种残缺连接词
         .replace(
-            /(像|仿佛|如同|宛若)[，。！？；]{0,2}/g,
+            /^(像|仿佛|如同|宛若)[，。！？；]?$/gm,
             ""
         )
 
@@ -136,15 +146,20 @@ const MengCleaner = {
 
         // ===== 动作残句 =====
 
-        // “笑着。”“站着。”这种
         .replace(
-            /^[^\n，。！？]{0,4}(盯着|笑着|看着|站着|沉默着)[。！？]?$/gm,
+            /^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？]?$/gm,
             ""
         )
 
+        // “盯着。”“看着。”这种超短动作句
+        .replace(
+            /^(\{\{user\}\}|\{\{char\}\})?\s*(盯着|看着|笑着|沉默着|站着)[。！？]?$/gm,
+            ""
+        )
+
+
         // ===== “的”修复 =====
-        .replace(/的([，。])/g,"$1")
-        .replace(/\s*的\s*([，。])/g, "$1");
+        .replace(/(?<=\S)的([，。])/g, "$1")
 
         //
         // 5️⃣ 删除奇葩字符
@@ -156,6 +171,11 @@ const MengCleaner = {
 
         console.log("[梦晏晨] 清洗后文本:", cleaned);
         console.log("[梦晏晨] === 清洗结束 ===");
+        
+        // ==== user和char变量恢复 ====
+        for (const [k,v] of Object.entries(variableMap)) {
+            cleaned = cleaned.replaceAll(v, k);
+        }
 
         return cleaned.trim();
     }
