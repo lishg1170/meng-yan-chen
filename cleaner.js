@@ -49,6 +49,10 @@ const MengCleaner = {
         };
 
         // ==== 1️⃣ 保护 user/char 变量 ====
+        const variableMap = {
+            "{{user}}": "MENGUSERTOKEN",
+            "{{char}}": "MENGCHARTOKEN"
+        };
         for (const [k, v] of Object.entries(variableMap)) {
             cleaned = cleaned.replaceAll(k, v);
         }
