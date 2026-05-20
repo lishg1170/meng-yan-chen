@@ -1,5 +1,5 @@
 // 文件: ruleManager.js
-// 作用：永久保存规则到 localStorage
+// 永久保存规则到 localStorage
 
 const RuleManager = {
     STORAGE_KEY: "meng_rules",
@@ -27,5 +27,4 @@ const RuleManager = {
     }
 };
 
-// ✅ 导出模块
 export default RuleManager;
