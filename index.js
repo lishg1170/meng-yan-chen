@@ -1,6 +1,6 @@
 // ======================
 // 梦晏晨 Ultimate Index
-// index.js (持久化修复版)
+// index.js (持久化修复 + 事件监听版)
 // ======================
 
 console.log("[梦晏晨] Ultimate Index 启动中...");
@@ -87,66 +87,73 @@ const defaultSettings = {
     nameFixRules: [{ from: "林晟", to: "林晨", enabled: true }],
     simpleReplacements: [], regexRules: [], contextRules: [],
 };
-let settings = structuredClone(defaultSettings);
+let settings = structuredClone(defaultSettings);  // 关键！必须保留此声明
 
-// ===== 设置加载（强化） =====
+// ===== 设置加载（等待 ST 配置就绪后再读） =====
 async function loadSettings() {
     try {
         const ctx = getSTContext();
-        if (!ctx) return;
+        if (!ctx) return false;
         ctx.extension_settings = ctx.extension_settings || {};
         const saved = ctx.extension_settings[PLUGIN_ID];
         if (saved && typeof saved === "object") {
             settings = Object.assign({}, defaultSettings, saved);
             mengLog("📂 已从ST配置读取设置");
-        } else {
-            settings = structuredClone(defaultSettings);
-            ctx.extension_settings[PLUGIN_ID] = structuredClone(settings);
-            ctx.saveSettingsDebounced?.();
-            mengLog("🆕 已创建默认设置");
+            // 安全修复
+            settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
+            settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
+            settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
+            settings.contextRules = Array.isArray(settings.contextRules) ? settings.contextRules : [];
+            // 正则预编译
+            for (const r of settings.regexRules) {
+                try { if (!r._regex && r.pattern) r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
+            }
+            return true;
         }
-        // 安全修复
-        settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
-        settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
-        settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
-        settings.contextRules = Array.isArray(settings.contextRules) ? settings.contextRules : [];
-        // 正则预编译
-        for (const r of settings.regexRules) {
-            try { if (!r._regex && r.pattern) r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
-        }
-        window.MengRuntime.settingsLoaded = true;
-        mengLog("✅ 设置加载完成");
-    } catch (e) { console.error(e); mengLog("💥 设置加载崩溃"); }
+        return false; // 还没保存过
+    } catch (e) {
+        console.error(e);
+        mengLog("💥 设置加载崩溃");
+        return false;
+    }
 }
 
-// ===== 设置保存（强化持久化） =====
+// 重试加载直到 ST 配置存在
+async function waitForSettingsLoad() {
+    let loaded = await loadSettings();
+    if (loaded) return;
+    // 如果没有找到保存的配置，等待 ST 广播 extension_settings_loaded 事件
+    mengLog("⏳ 等待ST配置加载...");
+    await new Promise(resolve => {
+        const check = () => {
+            const ctx = getSTContext();
+            if (ctx?.extension_settings?.[PLUGIN_ID]) {
+                resolve();
+            } else {
+                setTimeout(check, 300);
+            }
+        };
+        check();
+    });
+    await loadSettings(); // 再次读取
+}
+
+// ===== 设置保存 =====
 async function saveSettings() {
     try {
         const ctx = getSTContext();
-        if (!ctx) {
-            mengLog("⚠️ 保存失败：无法获取ST Context");
-            return false;
-        }
-        // 确保 extension_settings 对象存在
+        if (!ctx) return false;
         ctx.extension_settings = ctx.extension_settings || {};
-        // 写入设置到ST的持久化存储
         ctx.extension_settings[PLUGIN_ID] = structuredClone(settings);
-        // 调用ST的防抖保存函数，真正写入磁盘
         if (typeof ctx.saveSettingsDebounced === "function") {
             ctx.saveSettingsDebounced();
-            mengLog("💾 设置已持久化保存到ST");
-        } else {
-            mengLog("⚠️ saveSettingsDebounced 不存在，尝试手动保存");
-            // 降级方案：触发ST的保存事件
-            window.dispatchEvent(new Event("beforeunload"));
         }
-        // 额外写一份到 localStorage 作为备份
+        // 同时存一份到 localStorage 以防万一
         localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
-        mengLog("💾 本地备份已同步更新");
+        mengLog("💾 设置已持久化保存");
         return true;
     } catch (err) {
-        console.error("[梦晏晨] saveSettings 崩溃:", err);
-        mengLog("💥 保存失败：" + err.message);
+        console.error(err);
         return false;
     }
 }
@@ -160,29 +167,7 @@ async function waitModulesReady() {
     mengLog("✅ 核心模块就绪");
 }
 
-// ===== 全局状态初始化 =====
-function initGlobalState() {
-    window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(["林晨", "谢知许", "洛君瑾"]);
-    window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
-    window.MengYanChen.messageCache = window.MengYanChen.messageCache || new WeakSet();
-    mengLog("🧠 全局状态初始化完成");
-}
-
-// ===== 预初始化 =====
-async function preInit() {
-    if (window.MengRuntime.initializing) {
-        mengLog("⚠️ 初始化已在进行中");
-        return;
-    }
-    window.MengRuntime.initializing = true;
-    mengLog("🚀 开始预初始化");
-    await loadSettings();
-    initGlobalState();
-    await waitModulesReady();
-    mengLog("✅ 预初始化完成");
-}
-
-// ===== 消息清洗相关 =====
+// ===== 消息清洗相关（省略，与之前相同） =====
 function isAlreadyCleaned(msg) { return msg?._meng_cleaned || window.MengYanChen?.messageCache?.has(msg); }
 function markCleaned(msg) { if (msg) { msg._meng_cleaned = true; try { window.MengYanChen?.messageCache?.add(msg); } catch {} } }
 function getMessageField(msg) { return typeof msg?.mes === "string" ? "mes" : typeof msg?.content === "string" ? "content" : null; }
@@ -193,12 +178,10 @@ async function processMessage(msg, messageId) {
     if (!field) return;
     const original = msg[field];
     if (typeof original !== "string") return;
-
     mengLog(`🧹 清洗消息 ${messageId}`);
     let cleaned = original;
     try { cleaned = await window.MengCleaner.cleanText(original, settings); } catch { return; }
     if (cleaned === original) { markCleaned(msg); return; }
-
     msg[field] = cleaned;
     markCleaned(msg);
     try {
@@ -235,12 +218,14 @@ function bindMessageEvents() {
     mengLog("🎧 消息监听绑定");
 }
 
-// ===== Panda 注入 =====
+// ===== Panda 按钮 =====
 async function injectPandaButton() {
     if (window.MengUI?.injectPandaButton) {
         window.MengUI.injectPandaButton({
-            settings, extension_settings: getSTContext()?.extension_settings,
-            saveSettingsDebounced: saveSettings, PLUGIN_ID, mengLog, mengToast
+            settings,  // 必须传入当前 settings
+            extension_settings: getSTContext()?.extension_settings,
+            saveSettingsDebounced: saveSettings,
+            PLUGIN_ID, mengLog, mengToast
         });
     } else setTimeout(injectPandaButton, 1000);
 }
@@ -252,43 +237,39 @@ function createFloatingLogButton() {
     $("body").append(btn);
 }
 
-// ===== 最终启动（监听ST配置加载完成再读设置） =====
+// ===== 启动入口 =====
 (async () => {
     try {
         mengLog("🌿 开始执行 index.js");
         await loadDependencies();
         await waitModulesReady();
 
-        // 等待ST配置加载完成再读取设置
-        const ctx = getSTContext();
-        if (ctx && !ctx.extension_settings?.[PLUGIN_ID]) {
-            // 还没有该插件的配置，等待ST广播 extension_settings_loaded
-            await new Promise(resolve => {
-                const check = () => {
-                    const c = getSTContext();
-                    if (c?.extension_settings?.[PLUGIN_ID]) {
-                        resolve();
-                    } else {
-                        setTimeout(check, 300);
-                    }
-                };
-                check();
-            });
+        // 等待 ST 配置加载完毕再读设置
+        await waitForSettingsLoad();
+        if (!settings || Object.keys(settings).length === 0) {
+            settings = structuredClone(defaultSettings);
         }
 
-        await preInit();
+        // 初始化全局状态
+        window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(["林晨", "谢知许", "洛君瑾"]);
+        window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
+        window.MengYanChen.messageCache = window.MengYanChen.messageCache || new WeakSet();
+        mengLog("✅ 配置已就绪");
 
+        // 注册规则更新监听
         if (window.MengRuleManager?.registerUpdateCallback) {
             window.MengRuleManager.registerUpdateCallback(async (ns) => {
                 if (ns) { settings = Object.assign({}, settings, structuredClone(ns)); await saveSettings(); }
             });
         }
 
+        // UI 恢复
         setInterval(() => {
             if (!$("#meng-panda-btn").length) injectPandaButton();
             if (!$("#meng-log-floating-btn").length) createFloatingLogButton();
         }, 10000);
 
+        // 正常模式启动界面
         if (!window.__ST_IMPORT_EXPORT_MODE__) {
             if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r, { once: true }));
             injectPandaButton();
@@ -297,8 +278,8 @@ function createFloatingLogButton() {
             setInterval(() => saveSettings(), 30000);
         }
 
-        window.MengYanChenAPI = { settings, saveSettings, loadSettings, injectPandaButton, processMessage, mengLog, mengToast };
-        mengLog("🌟 插件启动完成");
+        window.MengYanChenAPI = { settings, saveSettings, loadSettings: waitForSettingsLoad, injectPandaButton, processMessage, mengLog, mengToast };
+        mengLog("🌟 全部模块运行完成");
     } catch (e) {
         console.error(e);
         mengLog("💥 启动崩溃");
