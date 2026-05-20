@@ -1,5 +1,3 @@
-// RuleManager.js
-
 (function() {
     console.log("[梦晏晨 RuleManager] 脚本加载开始");
 
@@ -27,6 +25,7 @@
             const context = window.SillyTavern?.getContext?.();
             const PLUGIN_ID = "meng-yan-chen";
             const savedRules = context?.extension_settings?.[PLUGIN_ID]?.rules;
+
             if (savedRules && Array.isArray(savedRules)) {
                 this._rules = savedRules;
                 console.log("[梦晏晨 RuleManager] 从 extension_settings 加载规则 ✅", savedRules);
@@ -34,6 +33,7 @@
                 this._rules = [...DEFAULT_RULES];
                 console.log("[梦晏晨 RuleManager] 使用默认规则 ✅", DEFAULT_RULES);
             }
+
             this._initialized = true;
             return this._rules;
         } catch (err) {
@@ -52,11 +52,15 @@
 
             const context = window.SillyTavern?.getContext?.();
             const PLUGIN_ID = "meng-yan-chen";
+
+            if (!context.extension_settings) context.extension_settings = {};
             if (!context.extension_settings[PLUGIN_ID]) context.extension_settings[PLUGIN_ID] = {};
+
             context.extension_settings[PLUGIN_ID].rules = this._rules;
 
+            // 异步调用防抖保存，保证异常不会阻断
             if (typeof context.saveSettingsDebounced === "function") {
-                context.saveSettingsDebounced();
+                try { context.saveSettingsDebounced(); } catch (err) { console.warn("[RuleManager] saveSettingsDebounced 错误", err); }
             }
 
             // 调用回调
@@ -75,7 +79,9 @@
     // ===== 注册更新回调 =====
     RuleManager.prototype.registerUpdateCallback = function(cb) {
         if (typeof cb === "function") {
-            this._updateCallbacks.push(cb);
+            if (!this._updateCallbacks.includes(cb)) { // 防止重复注册
+                this._updateCallbacks.push(cb);
+            }
             console.log("[梦晏晨 RuleManager] 注册更新回调 ✅");
         } else {
             console.warn("[梦晏晨 RuleManager] registerUpdateCallback 参数不是函数 ❌");
