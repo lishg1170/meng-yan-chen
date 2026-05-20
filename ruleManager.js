@@ -1,11 +1,10 @@
 // ruleManager.js
 // ============================
 // 梦晏晨规则管理器（Tauri/iPad 原生适配版）
+// 目标：永久保存规则，无需依赖UI
 // ============================
 
-import { MengCleaner } from "./clear.js"; // 保持独立文件
-
-// 默认 GitHub 初始化规则文件（空文件也行）
+// 默认 GitHub 初始化规则文件（可以是空文件）
 const DEFAULT_RULES_URL = "https://raw.githubusercontent.com/lishg1170/meng-yan-chen/refs/heads/main/menganchen.json";
 
 // 本地存储 key
@@ -14,8 +13,7 @@ const STORAGE_KEY = "梦晏晨_rules";
 const RuleManager = {
     /**
      * 加载规则
-     * 1️⃣ 先尝试本地存储
-     * 2️⃣ 如果本地没有，再去 GitHub 拉取初始化文件
+     * 优先本地存储，如果没有再拉 GitHub 初始化文件
      * @returns {Promise<Array>} 规则数组
      */
     async loadRules() {
@@ -54,7 +52,7 @@ const RuleManager = {
     },
 
     /**
-     * 保存规则
+     * 保存规则到本地存储
      * @param {Array} rules 规则数组
      */
     saveRules(rules) {
@@ -68,7 +66,7 @@ const RuleManager = {
 
     /**
      * 添加新规则
-     * @param {Object} rule { from, to, type, enabled }
+     * @param {Object} rule { type, from, to, enabled }
      */
     async addRule(rule) {
         if (!rule || typeof rule !== "object") return;
@@ -98,28 +96,6 @@ const RuleManager = {
         if (!Array.isArray(newRules)) return;
         this.saveRules(newRules);
         console.log("[梦晏晨 RuleManager] 已覆盖全部规则");
-    },
-
-    /**
-     * 异步清洗文本（自动加载规则）
-     * @param {string} text 原文本
-     * @returns {Promise<string>} 清洗后的文本
-     */
-    async cleanTextWithRules(text) {
-        try {
-            const rules = await this.loadRules();
-            const settings = {
-                nameFixRules: rules.filter(r => r.type === "nameFix"),
-                regexRules: rules.filter(r => r.type === "regex"),
-                simpleReplacements: rules.filter(r => r.type === "simple"),
-                contextRules: rules.filter(r => r.type === "context")
-            };
-            const cleanedText = await MengCleaner.cleanText(text, settings);
-            return cleanedText;
-        } catch (err) {
-            console.error("[梦晏晨 RuleManager] 清洗失败:", err);
-            return text;
-        }
     }
 };
 
