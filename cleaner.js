@@ -1,6 +1,6 @@
-// ======================
-// 梦晏晨 Cleaner Cache
-// ======================
+// ==========================
+// 梦晏晨CleanerCache clear.js
+// ===========================
 
 const MENG_CACHE = new Map();
 const MAX_CACHE_SIZE = 500;
