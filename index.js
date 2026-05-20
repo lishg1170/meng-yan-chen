@@ -1,20 +1,77 @@
 (async () => {
     console.log("[梦晏晨] 插件加载初始化");
 
-    // ===== 异步等待 RuleManager 加载规则 =====
+    // ===== toast + 页面右下角日志 =====
+    const liveLogContainer = document.createElement("div");
+    liveLogContainer.id = "meng-live-toast-log";
+    liveLogContainer.style.position = "fixed";
+    liveLogContainer.style.bottom = "10px";
+    liveLogContainer.style.right = "10px";
+    liveLogContainer.style.width = "260px";
+    liveLogContainer.style.maxHeight = "40vh";
+    liveLogContainer.style.overflowY = "auto";
+    liveLogContainer.style.background = "rgba(0,0,0,0.65)";
+    liveLogContainer.style.color = "#fff";
+    liveLogContainer.style.padding = "8px";
+    liveLogContainer.style.borderRadius = "10px";
+    liveLogContainer.style.fontSize = "0.85rem";
+    liveLogContainer.style.zIndex = 999999;
+    liveLogContainer.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+    document.body.appendChild(liveLogContainer);
+
+    function appendLiveLog(msg) {
+        const line = document.createElement("div");
+        line.textContent = `🕒 [${new Date().toLocaleTimeString()}] ${msg}`;
+        liveLogContainer.appendChild(line);
+        liveLogContainer.scrollTop = liveLogContainer.scrollHeight;
+    }
+
+    function showToast(message, duration = 2500) {
+        appendLiveLog(message);
+        const toast = document.createElement("div");
+        toast.textContent = message;
+        toast.style.position = "fixed";
+        toast.style.bottom = "20px";
+        toast.style.right = "20px";
+        toast.style.background = "rgba(0,0,0,0.85)";
+        toast.style.color = "white";
+        toast.style.padding = "10px 14px";
+        toast.style.borderRadius = "8px";
+        toast.style.fontSize = "0.95rem";
+        toast.style.zIndex = 999999;
+        toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+        toast.style.opacity = 0;
+        toast.style.transition = "opacity 0.3s";
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => toast.style.opacity = 1);
+        setTimeout(() => {
+            toast.style.opacity = 0;
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    // ===== 异步加载规则 =====
     async function initRules() {
-        if (!window.MengRuleManager) return [];
+        if (!window.MengRuleManager) {
+            showToast("⚠️ RuleManager 未加载！");
+            console.warn("[梦晏晨] RuleManager 未定义");
+            return [];
+        }
+        appendLiveLog("🔄 开始加载 RuleManager 规则...");
         try {
             const rules = await window.MengRuleManager.loadRules();
             console.log("[梦晏晨] 规则已加载", rules);
+            showToast("⚡ RuleManager 规则加载成功！");
+            appendLiveLog("✅ RuleManager 规则加载完成");
             return rules;
         } catch(e) {
             console.error("[梦晏晨] 规则加载失败", e);
+            showToast("⚠️ RuleManager 规则加载失败");
+            appendLiveLog("❌ RuleManager 规则加载失败");
             return [];
         }
     }
 
-    // ===== 初始化规则 =====
     const rules = await initRules();
 
     // ===== 设置对象 =====
@@ -22,16 +79,22 @@
         nameFixMap: {},
         simpleReplacements: [],
         regexRules: [],
-        contextRules: []
+        contextRules: [],
+        nameFixRules: []
     };
 
     // ===== 规则映射 =====
     rules.forEach(r => {
         if (!r.enabled) return;
         switch(r.type){
-            case "nameFix": settings.nameFixMap[r.from] = r.to; break;
-            case "simple": settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true }); break;
-            case "regex": 
+            case "nameFix":
+                settings.nameFixMap[r.from] = r.to;
+                settings.nameFixRules.push({ from: r.from, to: r.to, enabled: true });
+                break;
+            case "simple":
+                settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true });
+                break;
+            case "regex":
                 settings.regexRules.push({
                     pattern: r.pattern,
                     replace: r.replace || "",
@@ -39,16 +102,22 @@
                     _regex: r._regex || new RegExp(r.pattern, r.flags || "g")
                 });
                 break;
-            case "context": settings.contextRules.push(r); break;
+            case "context":
+                settings.contextRules.push(r);
+                break;
         }
     });
 
-    // ===== 规则更新回调 =====
+    // ===== RuleManager 更新回调 =====
     window.MengRuleManager?.registerUpdateCallback?.((newRules) => {
         newRules.forEach(r => {
             if (!r.enabled) return;
-            if (r.type === "nameFix") settings.nameFixMap[r.from] = r.to;
-            else if (r.type === "simple") {
+            if (r.type === "nameFix") {
+                settings.nameFixMap[r.from] = r.to;
+                if (!settings.nameFixRules.find(e => e.from === r.from)) {
+                    settings.nameFixRules.push({ from: r.from, to: r.to, enabled: true });
+                }
+            } else if (r.type === "simple") {
                 if (!settings.simpleReplacements.find(e => e.from === r.from)) {
                     settings.simpleReplacements.push({ from: r.from, to: r.to, enabled: true });
                 }
@@ -64,22 +133,19 @@
             }
         });
         console.log("[梦晏晨] settings 已同步更新 ✅");
-        showTip("规则已更新 ✅");
+        showToast("⚡ RuleManager 已更新规则！");
+        appendLiveLog("🔔 规则更新完成");
     });
 
-    // ===== UI 挂载 =====
+    // ===== UI 挂载 & 按钮注入 =====
     window.MengUI = window.MengUI || {};
-    // 确保 openMengPanel 不为空，提供默认面板提示
-    window.MengUI.openMengPanel = window.MengUI.openMengPanel || ((context) => {
-        showTip("梦晏晨面板打开！⚡（这是默认提示，可替换成真正UI）");
-        console.log("[梦晏晨] 打开面板（默认提示）", context);
-    });
+    window.MengUI.openMengPanel = window.MengUI.openMengPanel || (() => {});
 
     function injectPandaButton(context){
         const target = $("#data_bank_wand_container");
         if (!target.length) {
-            console.warn("[梦晏晨] Panda 按钮容器未找到，等待重试...");
-            setTimeout(() => injectPandaButton(context), 500);
+            appendLiveLog("⏳ 容器未就绪，等待注入按钮...");
+            setTimeout(() => injectPandaButton(context), 1000);
             return;
         }
         if ($("#meng-panda-btn").length) return;
@@ -87,25 +153,39 @@
 <div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;">
 <span>🐼</span><span>梦晏晨</span>
 </div>`);
-        btn.off("click").on("click", () => window.MengUI.openMengPanel(context));
+        btn.on("click", () => {
+            if (typeof window.MengUI.openMengPanel === 'function') {
+                window.MengUI.openMengPanel(context);
+                showToast("✅ 面板已打开");
+                appendLiveLog("📂 面板打开成功");
+            } else {
+                alert("⚠️ 面板未就绪");
+                console.error("[梦晏晨] openMengPanel 未定义");
+            }
+        });
         target.append(btn);
-        console.log("[梦晏晨] 🐼 Panda 按钮已成功注入");
-        showTip("🐼 梦晏晨插件已加载 ✅");
+        console.log("[梦晏晨] 🐼 Panda按钮已注入");
+        showToast("🐼 Panda按钮注入成功");
+        appendLiveLog("🐼 Panda按钮注入完成");
     }
     window.MengUI.injectPandaButton = injectPandaButton;
 
-    // ===== 全局管理 =====
+    // ===== 全局状态管理 =====
     window.MengYanChen = window.MengYanChen || {};
     window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(['林晨','谢知许','洛君瑾']);
     window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
 
-    // ===== 消息处理 =====
     function processMessage(msg, messageId){
         if (!window.MengCleaner || !msg || (!msg.mes && !msg.content) || msg._meng_cleaned) return;
         const field = msg.mes ? "mes" : "content";
         let cleaned;
         try { cleaned = window.MengCleaner.cleanText(msg[field], settings); }
-        catch(e) { console.error("[梦晏晨] cleanText 出错", e, msg); return; }
+        catch(e) { 
+            console.error("[梦晏晨] cleanText 出错", e, msg); 
+            showToast("⚠️ 消息清洗出错"); 
+            appendLiveLog("❌ 消息清洗失败"); 
+            return; 
+        }
         if (cleaned !== msg[field]){
             msg[field] = cleaned;
             msg._meng_cleaned = true;
@@ -113,26 +193,37 @@
             if (chat?.[messageId]) { chat[messageId][field] = cleaned; chat[messageId]._meng_cleaned = true; }
             const mesBlock = document.querySelector(`#chat .mes[mesid="${messageId}"] .mes_text`);
             if (mesBlock) mesBlock.textContent = cleaned;
+            appendLiveLog(`✅ 消息 [${messageId}] 已清洗`);
         }
     }
 
-    // ===== 安全挂载消息处理 =====
     window.MengUI.processMessageWithLearning = window.MengUI.processMessageWithLearning || ((msg,id) => {
-        try { processMessage(msg,id); } catch(e){ console.error("[梦晏晨] processMessageWithLearning 错误", e); }
+        try { processMessage(msg,id); } catch(e){ 
+            console.error(e); 
+            showToast("⚠️ 消息处理异常"); 
+        }
     });
 
-    // ===== 延迟注入按钮 =====
+    // ===== 注入按钮 & 绑定事件 =====
     function tryInjectPanda(context){
         const container = $("#data_bank_wand_container");
-        if (!container.length) { setTimeout(() => tryInjectPanda(context), 500); return; }
+        if (!container.length) { 
+            appendLiveLog("⏳ UI容器未就绪，等待重试...");
+            setTimeout(() => tryInjectPanda(context), 500); 
+            return; 
+        }
         if ($("#meng-panda-btn").length) return;
         window.MengUI.injectPandaButton(context);
+        appendLiveLog("🎉 UI按钮注入完成");
     }
 
-    // ===== 事件绑定 =====
     function bindEvents(){
         const context = window.SillyTavern?.getContext?.();
-        if (!context?.eventSource) { setTimeout(bindEvents,500); return; }
+        if (!context?.eventSource) { 
+            appendLiveLog("⏳ ST context未就绪，等待事件绑定...");
+            setTimeout(bindEvents,500); 
+            return; 
+        }
         if (context._meng_bound) return;
         context._meng_bound = true;
         const bindEvent = (eventType) => context.eventSource.on(eventType,(...args)=>{
@@ -142,28 +233,16 @@
         });
         bindEvent(context.event_types.CHARACTER_MESSAGE_RENDERED);
         bindEvent(context.event_types.USER_MESSAGE_RENDERED);
-        console.log("[梦晏晨] 已绑定消息事件");
-        showTip("🐼 消息监听已启动 ✅");
+        console.log("[梦晏晨] 消息事件绑定完成 ✅");
+        appendLiveLog("🎯 消息监听已开启");
+        showToast("🎯 消息监听已开启");
     }
 
-    // ===== 小工具：页面提示 =====
-    function showTip(text, duration=3000){
-        let tip = $("#meng-tip");
-        if(!tip.length){
-            tip = $('<div id="meng-tip" style="position:fixed;top:10px;right:10px;padding:10px 15px;background:rgba(0,0,0,0.7);color:white;font-size:0.9rem;border-radius:8px;z-index:999999;">'+text+'</div>');
-            $("body").append(tip);
-        } else {
-            tip.text(text).stop(true,true).fadeIn();
-        }
-        tip.stop(true,true).fadeIn().delay(duration).fadeOut();
-    }
-
-    // ===== 初始化入口 =====
     if (!window.__ST_IMPORT_EXPORT_MODE__) {
         $(document).ready(()=>{
-            console.log("[梦晏晨] 插件已启动");
-            showTip("🐼 梦晏晨插件初始化中...");
-            tryInjectPanda({ settings });
+            appendLiveLog("🚀 插件已启动");
+            showToast("🚀 梦晏晨插件已启动");
+            tryInjectPanda({ settings, extension_settings: window.extension_settings || {}, saveSettingsDebounced: ()=>{}, PLUGIN_ID: 'meng' });
             bindEvents();
         });
     }
