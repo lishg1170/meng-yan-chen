@@ -29,7 +29,7 @@
     
     // ===== 永久规则管理 =====
     import("./ruleManager.js").then(RuleManagerModule => {
-        const RuleManager = RuleManagerModule.default;  // ✅ 这里改成 default
+        const RuleManager = RuleManagerModule.default;  // ✅ 优化了default
         // 自动加载规则
         window.MengRules = RuleManager.loadRules();
         // 暴露保存方法给 UI 使用
