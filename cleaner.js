@@ -180,24 +180,21 @@ const MengCleaner = {
         .replace(/(?<=\S)的([，。])/g, "$1")
         
         cleaned = cleaned
-          .split(/[。！？\n]/g)
-          .map(s => s.trim())
-          .filter(Boolean)
-          .filter(s => {
-              // 状态栏保护
-              if (/^[A-Za-z]{1,10}[:：=]/.test(s)) return true;
-            
-              return s.length > 3;
-          })
-          .filter(s => {
-               // 包含保护块直接放行
-               if (/MENGBLOCK\d+/.test(s)) return true;
+             .split(/(?<=[。！？\n])/g) // 按句号/感叹号/问号/换行拆分，同时保留拆分符
+             .map(s => s.trim())
+             .filter(s => s.length > 0) // 不丢短句
+             .filter(s => {
+                 // 状态栏保护
+                 if (/^[A-Za-z]{1,10}[:：=]/.test(s)) return true;
 
-               return /[一-龥]{2,}/.test(s);
-          })
-          .filter(s => !/^(盯着|看着|像|仿佛)$/.test(s))
-          .join("。")
-          .replace(/[。]+$/,"");
+                 // 包含保护块直接放行
+                 if (/MENGBLOCK\d+/.test(s)) return true;
+
+                 return true; // 其它全部保留
+            })
+            .join("") // 保留原来的换行和句号，不再破坏段落
+            .replace(/\n{2,}/g, "\n") // 压缩多余空行
+            .replace(/[。]{2,}/g, "。"); // 多余句号压缩
 
         //
         // 5️⃣ 删除奇葩字符
