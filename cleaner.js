@@ -16,6 +16,23 @@ const MengCleaner = {
         for (const [k,v] of Object.entries(variableMap)) {
             cleaned = cleaned.replaceAll(k, v);
         }
+        
+        // ===== 保护状态栏/XML/标签 =====
+
+        const protectedBlocks = [];
+
+        cleaned = cleaned.replace(
+
+          /\[[\s\S]*?\]|\<[\s\S]*?\>/g,
+
+         (m) => {
+
+           protectedBlocks.push(m);
+
+           return `MENGBLOCK${protectedBlocks.length - 1}`;
+         }
+
+       );
 
         // ===== 文字提示 =====
         console.log("[梦晏晨] === 清洗开始 ===");
@@ -39,7 +56,7 @@ const MengCleaner = {
                 if (matches?.length) {
                     console.log(`[梦晏晨] 上下文删除匹配:`, matches);
                 }
-                cleaned = cleaned.replace(fullRegex, '');
+                cleaned = cleaned.replace(fullRegex, ' ');
             } catch (err) {
                 console.warn("[梦晏晨] 上下文规则错误:", rule.pattern, err);
             }
@@ -73,7 +90,10 @@ const MengCleaner = {
                 if (!rule._regex) rule._regex = new RegExp(rule.pattern, rule.flags || "g");
                 const matches = cleaned.match(rule._regex);
                 if (matches?.length) console.log(`[梦晏晨] 正则规则匹配: "${rule.pattern}"`, matches);
-                cleaned = cleaned.replace(rule._regex, rule.replace || "");
+                cleaned = cleaned.replace(
+                     rule._regex,
+                     rule.replace ?? " "
+                 );
             } catch (err) {
                 console.warn("[梦晏晨] regex规则错误:", rule.pattern, err);
             }
@@ -98,24 +118,22 @@ const MengCleaner = {
         // ===== 基础清理 =====
         .replace(/\n{3,}/g, "\n\n")
         .replace(/[ \t]{2,}/g, " ")
+        .replace(/\s+([，。！？])/g, "$1")
 
         // ===== 残句修复 =====
 
-        // “眼睛里。”“空气里。”这种
-        .replace(
-            /(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)[，。！？；]?/g,
-            ""
-        )
+        // 改成弱处理（不破坏句子）
+        .replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ")
 
         // “盯着。”“看着。”这种单残句
         .replace(
-            /^[^\n，。！？]{0,6}(盯着|看着|注视着|凝视着)[，。！？]?$/gm,
+            /^\s*(盯着|看着|注视着|凝视着)\s*$/gm,
             ""
         )
 
         // “像。”“仿佛。”这种残缺连接词
         .replace(
-            /^(像|仿佛|如同|宛若)[，。！？；]?$/gm,
+            /^(像|仿佛|如同|宛若)\s*[，。！？；]?$/gm,
             ""
         )
 
@@ -160,6 +178,15 @@ const MengCleaner = {
 
         // ===== “的”修复 =====
         .replace(/(?<=\S)的([，。])/g, "$1")
+        
+        cleaned = cleaned
+          .split(/[。！？\n]/g)
+          .map(s => s.trim())
+          .filter(Boolean)
+          .filter(s => s.length > 3)
+          .filter(s => /[一-龥]{2,}/.test(s))
+          .filter(s => !/^(盯着|看着|像|仿佛)$/.test(s))
+          .join("。").replace(/[。]+$/,"") + "。";
 
         //
         // 5️⃣ 删除奇葩字符
@@ -171,6 +198,11 @@ const MengCleaner = {
 
         console.log("[梦晏晨] 清洗后文本:", cleaned);
         console.log("[梦晏晨] === 清洗结束 ===");
+        
+        // ==== 状态栏/标签恢复 ====
+        cleaned = cleaned.replace(/MENGBLOCK(\d+)/g, (_, i) => {
+            return protectedBlocks[i];
+        });
         
         // ==== user和char变量恢复 ====
         for (const [k,v] of Object.entries(variableMap)) {
