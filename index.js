@@ -186,7 +186,7 @@ async function injectPandaButton() {
 
 function createFloatingLogButton() {
     if ($("#meng-log-floating-btn").length) return;
-    const btn = $(`<div id="meng-log-floating-btn" style="position:fixed;right:16px;bottom:90px;z-index:999999;background:rgba(170,255,200,0.12);border:1px solid rgba(170,255,200,0.18);backdrop-filter:blur(6px);padding:8px 12px;border-radius:14px;cursor:pointer;font-size:0.9rem;color:#d8ffe7;">📜 日志</div>`);
+    const btn = $(`<div id="meng-log-floating-btn" style="position:fixed;right:16px;bottom:125px;z-index:999999;background:rgba(170,255,200,0.12);border:1px solid rgba(170,255,200,0.18);backdrop-filter:blur(6px);padding:8px 12px;border-radius:14px;cursor:pointer;font-size:0.9rem;color:#d8ffe7;">📜 日志</div>`);
     btn.on("click", () => { const b = $("#meng-live-log"); if (b.length) b.toggle(); else mengToast("无日志面板"); });
     $("body").append(btn);
 }
