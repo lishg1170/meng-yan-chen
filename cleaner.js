@@ -1,5 +1,5 @@
 // ======================
-// 梦晏晨 Cleaner Cache求别崩溃
+// 梦晏晨 Cleaner Cache别崩溃
 // ======================
 
 const MENG_CACHE = new Map();
