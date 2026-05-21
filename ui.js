@@ -1,4 +1,4 @@
-// ===== UI 文件: ui.js (最终可爱版) =====
+// ===== UI 文件: ui.js (可爱☺️求别崩溃) =====
 
 function escapeHtml(str = "") {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
