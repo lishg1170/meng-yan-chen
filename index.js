@@ -1,11 +1,10 @@
 // ======================
 // 梦晏晨 Ultimate Index
-// index.js (localStorage 持久化最终版)
+// index.js (localStorage 持久化 + 可视化开关)
 // ======================
 
 console.log("[梦晏晨] Ultimate Index 启动中...");
 
-// 防重复加载
 if (window.MengRuntime?.indexLoaded) {
     console.warn("[梦晏晨] Index 已加载，阻止重复初始化");
 }
@@ -79,19 +78,30 @@ async function waitForCondition({ check, timeout = 15000, interval = 200, name =
     return false;
 }
 
-// ===== 设置定义 =====
+// ===== 设置定义（包含新增的可视化开关） =====
 const PLUGIN_ID = "meng-yan-chen";
 const defaultSettings = {
-    enabled: true, autoClean: true, autoLearning: true, protectVariables: true, protectWhitelist: true,
-    showToast: true, showLogs: true, debug: false, maxTextLength: 500000,
+    enabled: true,
+    autoClean: true,
+    autoLearning: true,
+    protectVariables: true,
+    protectWhitelist: true,
+    protectStatusBar: true,
+    showToast: true,
+    showLogs: true,
+    debug: false,
+    maxTextLength: 500000,
+    enableSentenceOptimization: true,
+    actionWords: ["盯着","看着","笑着","沉默着","站着"],
     nameFixRules: [{ from: "林晟", to: "林晨", enabled: true }],
-    simpleReplacements: [], regexRules: [], contextRules: [],
+    simpleReplacements: [],
+    regexRules: [],
+    contextRules: [],
 };
 let settings = structuredClone(defaultSettings);
 
 // ===== 设置加载（优先 localStorage） =====
 async function loadSettings() {
-    // 1. 优先尝试从 localStorage 恢复
     const local = localStorage.getItem("meng_rule_backup");
     if (local) {
         try {
@@ -105,8 +115,6 @@ async function loadSettings() {
             mengLog("⚠️ 本地存储数据损坏，忽略");
         }
     }
-
-    // 2. 其次尝试 ST 配置
     try {
         const ctx = getSTContext();
         if (ctx) {
@@ -115,7 +123,6 @@ async function loadSettings() {
             if (saved && typeof saved === "object") {
                 settings = Object.assign({}, defaultSettings, saved);
                 mengLog("📂 已从ST配置读取设置");
-                // 同步到 localStorage
                 localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
                 return true;
             }
@@ -123,16 +130,12 @@ async function loadSettings() {
     } catch (e) {
         mengLog("⚠️ 读取ST配置失败");
     }
-
-    // 3. 都没读到则返回 false
     return false;
 }
 
-// 等待设置就绪（最多等待 5 秒，超时后使用默认）
 async function waitForSettingsLoad() {
     let loaded = await loadSettings();
     if (loaded) return;
-
     mengLog("⏳ 等待ST配置加载（最多5秒）...");
     await new Promise(resolve => {
         const timeout = setTimeout(() => {
@@ -150,24 +153,18 @@ async function waitForSettingsLoad() {
         };
         check();
     });
-
-    // 再次尝试加载（loadSettings 会先查 localStorage，再查 ST）
     await loadSettings();
-    // 若仍为空，则使用默认设置
     if (!settings || Object.keys(settings).length === 0) {
         settings = structuredClone(defaultSettings);
         mengLog("🆕 使用默认设置");
     }
 }
 
-// ===== 设置保存（同时写 ST 和 localStorage） =====
+// ===== 设置保存 =====
 async function saveSettings() {
     try {
-        // 写入 localStorage（主存储）
         localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
         mengLog("💾 设置已保存到本地存储");
-
-        // 尝试写入 ST 配置（备份）
         const ctx = getSTContext();
         if (ctx) {
             ctx.extension_settings = ctx.extension_settings || {};
@@ -265,7 +262,7 @@ async function injectPandaButton() {
 
 function createFloatingLogButton() {
     if ($("#meng-log-floating-btn").length) return;
-    const btn = $(`<div id="meng-log-floating-btn" style="position:fixed;right:16px;bottom:125px;z-index:999999;background:rgba(170,255,200,0.12);border:1px solid rgba(170,255,200,0.18);backdrop-filter:blur(6px);padding:8px 12px;border-radius:14px;cursor:pointer;font-size:0.9rem;color:#d8ffe7;">📜 日志</div>`);
+    const btn = $(`<div id="meng-log-floating-btn" style="position:fixed;right:16px;bottom:125px;z-index:999999;background:rgba(170,255,200,0.12);border:1px solid rgba(170,255,200,0.18);backdrop-filter:blur(6px);padding:8px 12px;border-radius:14px;cursor:pointer;font-size:0.9rem;color:#d8ffe7;">😶‍🌫️ 日志</div>`);
     btn.on("click", () => { const b = $("#meng-live-log"); if (b.length) b.toggle(); else mengToast("无日志面板"); });
     $("body").append(btn);
 }
@@ -276,24 +273,19 @@ function createFloatingLogButton() {
         mengLog("🌿 开始执行 index.js");
         await loadDependencies();
         await waitModulesReady();
-
-        // 等待配置（优先 localStorage，最多5秒，超时用默认）
         await waitForSettingsLoad();
 
-        // 初始化全局状态
         window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(["林晨", "谢知许", "洛君瑾"]);
         window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
         window.MengYanChen.messageCache = window.MengYanChen.messageCache || new WeakSet();
         mengLog("✅ 配置已就绪");
 
-        // 注册规则更新监听
         if (window.MengRuleManager?.registerUpdateCallback) {
             window.MengRuleManager.registerUpdateCallback(async (ns) => {
                 if (ns) { settings = Object.assign({}, settings, structuredClone(ns)); await saveSettings(); }
             });
         }
 
-        // UI 恢复
         setInterval(() => {
             if (!$("#meng-panda-btn").length) injectPandaButton();
             if (!$("#meng-log-floating-btn").length) createFloatingLogButton();
