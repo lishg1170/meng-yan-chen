@@ -1,153 +1,314 @@
-// ===== UI 文件: ui.js (可爱？版求别崩溃) =====
+// ======================
+// 梦晏晨 Ultimate Index
+// index.js (最终完整版)
+// ======================
 
-function escapeHtml(str = "") {
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+console.log("[梦晏晨] Ultimate Index 启动中...");
+
+if (window.MengRuntime?.indexLoaded) {
+    console.warn("[梦晏晨] Index 已加载，阻止重复初始化");
+}
+window.MengRuntime = window.MengRuntime || {};
+window.MengRuntime.indexLoaded = true;
+
+window.MengYanChen = window.MengYanChen || {};
+window.MengLogs = window.MengLogs || [];
+
+// ===== 工具函数 =====
+function mengLog(message, type = "log") {
+    const time = new Date().toLocaleTimeString();
+    const finalMsg = `🕒 [${time}] ${message}`;
+    (window.MengLogs = window.MengLogs || []).push(finalMsg);
+    if (window.MengLogs.length > 1000) window.MengLogs.shift();
+    console[type]("[梦晏晨]", message);
+    try {
+        const logBox = document.querySelector("#meng-live-log");
+        if (logBox) {
+            logBox.textContent += finalMsg + "\n";
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+    } catch (err) {}
 }
 
-function openMengPanel(context) {
-    const { settings, extension_settings, saveSettingsDebounced, PLUGIN_ID } = context;
-    if (!settings || typeof settings !== "object") {
-        alert("⚠️ 设置尚未加载，请关闭面板后重试");
+function mengToast(msg) {
+    try {
+        if (window.toastr) toastr.success(msg);
+        else console.log("[Toast]", msg);
+    } catch (err) {}
+    mengLog(msg);
+}
+
+function getSTContext() {
+    try { return window.SillyTavern?.getContext?.(); } catch (err) { return null; }
+}
+
+// ===== 动态脚本加载 =====
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`加载失败: ${src}`));
+        document.head.appendChild(script);
+    });
+}
+
+async function loadDependencies() {
+    const base = "scripts/extensions/third-party/meng-yan-chen/";
+    const files = ["cleaner.js", "ui.js"];
+    for (const file of files) {
+        try {
+            await loadScript(base + file);
+            mengLog(`✅ 已加载 ${file}`);
+        } catch (err) {
+            mengLog(`💥 ${file} 加载失败: ${err.message}`, "error");
+        }
+    }
+}
+
+// ===== 安全等待 =====
+async function waitForCondition({ check, timeout = 15000, interval = 200, name = "Unknown" }) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        try { if (check()) { mengLog(`✅ ${name} 已就绪`); return true; } } catch (err) {}
+        await new Promise(r => setTimeout(r, interval));
+    }
+    mengLog(`⚠️ ${name} 等待超时`);
+    return false;
+}
+
+// ===== 设置定义 =====
+const PLUGIN_ID = "meng-yan-chen";
+const defaultSettings = {
+    enabled: true,
+    autoClean: true,
+    autoLearning: true,
+    protectVariables: true,
+    protectWhitelist: true,
+    protectStatusBar: true,
+    showToast: true,
+    showLogs: true,
+    debug: false,
+    maxTextLength: 500000,
+    enableSentenceOptimization: true,
+    actionWords: ["盯着","看着","笑着","沉默着","站着"],
+    nameFixRules: [{ from: "林晟", to: "林晨", enabled: true }],
+    simpleReplacements: [],
+    regexRules: [],
+    contextRules: [],
+};
+let settings = structuredClone(defaultSettings);
+
+// ===== 设置加载（优先 localStorage） =====
+async function loadSettings() {
+    const local = localStorage.getItem("meng_rule_backup");
+    if (local) {
+        try {
+            const parsed = JSON.parse(local);
+            if (parsed && typeof parsed === "object") {
+                settings = Object.assign({}, defaultSettings, parsed);
+                mengLog("📂 已从本地存储读取设置");
+                return true;
+            }
+        } catch (e) {
+            mengLog("⚠️ 本地存储数据损坏，忽略");
+        }
+    }
+    try {
+        const ctx = getSTContext();
+        if (ctx) {
+            ctx.extension_settings = ctx.extension_settings || {};
+            const saved = ctx.extension_settings[PLUGIN_ID];
+            if (saved && typeof saved === "object") {
+                settings = Object.assign({}, defaultSettings, saved);
+                mengLog("📂 已从ST配置读取设置");
+                localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
+                return true;
+            }
+        }
+    } catch (e) {
+        mengLog("⚠️ 读取ST配置失败");
+    }
+    return false;
+}
+
+async function waitForSettingsLoad() {
+    let loaded = await loadSettings();
+    if (loaded) return;
+    mengLog("⏳ 等待ST配置加载（最多5秒）...");
+    await new Promise(resolve => {
+        const timeout = setTimeout(() => {
+            mengLog("⏰ 等待超时，尝试再次读取本地存储");
+            resolve();
+        }, 5000);
+        const check = () => {
+            const ctx = getSTContext();
+            if (ctx?.extension_settings?.[PLUGIN_ID]) {
+                clearTimeout(timeout);
+                resolve();
+            } else {
+                setTimeout(check, 300);
+            }
+        };
+        check();
+    });
+    await loadSettings();
+    if (!settings || Object.keys(settings).length === 0) {
+        settings = structuredClone(defaultSettings);
+        mengLog("🆕 使用默认设置");
+    }
+}
+
+// ===== 设置保存 =====
+async function saveSettings() {
+    try {
+        localStorage.setItem("meng_rule_backup", JSON.stringify(settings));
+        mengLog("💾 设置已保存到本地存储");
+        const ctx = getSTContext();
+        if (ctx) {
+            ctx.extension_settings = ctx.extension_settings || {};
+            ctx.extension_settings[PLUGIN_ID] = structuredClone(settings);
+            if (typeof ctx.saveSettingsDebounced === "function") {
+                ctx.saveSettingsDebounced();
+            }
+            mengLog("💾 设置已同步到ST配置");
+        }
+        return true;
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
+}
+
+// ===== 模块等待 =====
+async function waitModulesReady() {
+    mengLog("⏳ 等待核心模块...");
+    await waitForCondition({ name: "MengCleaner", check: () => !!(window.MengCleaner?.cleanText) });
+    await waitForCondition({ name: "MengUI", check: () => !!(window.MengUI?.openMengPanel) });
+    await waitForCondition({ name: "RuleManager", check: () => !!window.MengRuleManager });
+    mengLog("✅ 核心模块就绪");
+}
+
+// ===== 消息清洗 =====
+function isAlreadyCleaned(msg) { return msg?._meng_cleaned || window.MengYanChen?.messageCache?.has(msg); }
+function markCleaned(msg) { if (msg) { msg._meng_cleaned = true; try { window.MengYanChen?.messageCache?.add(msg); } catch {} } }
+function getMessageField(msg) { return typeof msg?.mes === "string" ? "mes" : typeof msg?.content === "string" ? "content" : null; }
+
+async function processMessage(msg, messageId) {
+    if (!window.MengCleaner?.cleanText || !msg || isAlreadyCleaned(msg)) return;
+    const field = getMessageField(msg);
+    if (!field) return;
+    const original = msg[field];
+    if (typeof original !== "string") return;
+
+    mengLog(`🧹 清洗消息 ${messageId}`);
+    let cleaned = original;
+    try { cleaned = await window.MengCleaner.cleanText(original, settings); } catch { return; }
+    if (cleaned === original) { markCleaned(msg); return; }
+
+    msg[field] = cleaned;
+    markCleaned(msg);
+    try {
+        const chat = window.SillyTavern?.getContext?.()?.chat;
+        if (chat?.[messageId]) { chat[messageId][field] = cleaned; chat[messageId]._meng_cleaned = true; }
+    } catch {}
+    try {
+        const el = document.querySelector(`#chat .mes[mesid="${messageId}"] .mes_text`);
+        if (el) el.textContent = cleaned;
+    } catch {}
+    mengLog(`✅ 消息 ${messageId} 清洗完成`);
+}
+
+function bindMessageEvents() {
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx || ctx._meng_bound || !ctx.eventSource) {
+        setTimeout(bindMessageEvents, 1500);
         return;
     }
-    const extSettings = extension_settings || {};
-    settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
-    settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
-    settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
-    settings.contextRules = Array.isArray(settings.contextRules) ? settings.contextRules : [];
-    if ($("#meng-overlay").length) return;
-
-    const html = `
-<div id="meng-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.65);z-index:999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
-    <div style="width:90%;max-width:520px;max-height:85vh;overflow:auto;background:#e6f4ea;border-radius:18px;padding:18px;color:#0f172a;box-shadow:0 0 25px rgba(0,0,0,0.5);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div style="font-size:1.2rem;font-weight:bold;">🐼 梦晏晨 · 文辞净斋</div>
-            <div id="meng-close" style="cursor:pointer;font-size:1.2rem;">✕</div>
-        </div>
-        <hr>
-        <div id="meng-content-container"></div>
-    </div>
-</div>`;
-
-    $("body").append(html);
-    const $overlay = $("#meng-overlay");
-    const $content = $("#meng-content-container");
-    $("#meng-close").on("click", () => $overlay.remove());
-
-    $content.html(`
-        <details open><summary style="font-weight:bold;color:#0f766e;cursor:pointer;">🥰 名字修正</summary>
-            <div id="meng-namefix-container" style="margin-top:8px;"></div>
-            <div style="display:flex;gap:4px;margin-top:6px;">
-                <input id="meng-namefix-new-from" placeholder="错误名" style="flex:1;">
-                <input id="meng-namefix-new-to" placeholder="正确名" style="flex:1;">
-                <button id="meng-namefix-add">➕</button>
-            </div>
-        </details>
-        <details open><summary style="font-weight:bold;color:#f59e0b;cursor:pointer;">🥳 脏词/简单替换</summary>
-            <div id="meng-simple-container" style="margin-top:8px;"></div>
-            <div style="display:flex;gap:4px;margin-top:6px;">
-                <input id="meng-simple-new-from" placeholder="原词" style="flex:1;">
-                <input id="meng-simple-new-to" placeholder="替换为(可选)" style="flex:1;">
-                <button id="meng-simple-add">➕</button>
-            </div>
-        </details>
-        <details open><summary style="font-weight:bold;color:#3b82f6;cursor:pointer;">😴 正则替换</summary>
-            <div id="meng-regex-container" style="margin-top:8px;"></div>
-            <div style="display:flex;gap:4px;margin-top:6px;">
-                <input id="meng-regex-new-pattern" placeholder="正则 pattern" style="flex:1;">
-                <input id="meng-regex-new-replace" placeholder="替换为(可选)" style="flex:1;">
-                <button id="meng-regex-add">➕</button>
-            </div>
-        </details>
-        <details open><summary style="font-weight:bold;color:#f87171;cursor:pointer;">🍵 上下文删除</summary>
-            <div id="meng-context-container" style="margin-top:8px;"></div>
-            <div style="display:flex;gap:4px;margin-top:6px;">
-                <input id="meng-context-new" placeholder="待删除内容" style="flex:1;">
-                <button id="meng-context-add">➕</button>
-            </div>
-        </details>
-        <details open><summary style="font-weight:bold;color:#7c3aed;cursor:pointer;">🫠 实时预览</summary>
-            <textarea id="meng-preview-input" placeholder="在此粘贴文本..." style="width:100%;height:60px;margin-top:8px;"></textarea>
-            <button id="meng-preview-run" style="margin-top:4px;">▶ 预览清洗</button>
-            <div id="meng-preview-output" style="background:#ffffff;border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap;max-height:120px;overflow:auto;"></div>
-            <div id="meng-preview-log" style="font-size:0.8rem;color:#475569;margin-top:4px;"></div>
-            <div id="meng-pending-confirm" style="margin-top:4px;"></div>
-        </details>
-        <details><summary style="font-weight:bold;color:#0f172a;cursor:pointer;">😶‍🌫️ 实时日志</summary>
-            <pre id="meng-live-log" style="background:#f1f5f9;border-radius:8px;padding:8px;max-height:150px;overflow:auto;font-size:0.8rem;margin-top:6px;"></pre>
-        </details>
-        <details open>
-            <summary style="font-weight:bold;color:#0f172a;cursor:pointer;">⚙️ 保护与优化开关</summary>
-            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-                <label style="cursor:pointer;">
-                    <input type="checkbox" id="meng-protect-variables" ${settings.protectVariables ? 'checked' : ''}>
-                    🥹 保护 {{user}} / {{char}} 变量
-                </label>
-                <label style="cursor:pointer;">
-                    <input type="checkbox" id="meng-protect-whitelist" ${settings.protectWhitelist ? 'checked' : ''}>
-                    🤔 保护 ST 白名单标签
-                </label>
-                <label style="cursor:pointer;">
-                    <input type="checkbox" id="meng-protect-statusbar" ${settings.protectStatusBar ? 'checked' : ''}>
-                    😫 保护状态栏/XML/中文标签
-                </label>
-                <label style="cursor:pointer;">
-                    <input type="checkbox" id="meng-sentence-optimization" ${settings.enableSentenceOptimization ? 'checked' : ''}>
-                    ε(´｡•᎑•`)っ♡ 启用句子清理与自然段优化
-                </label>
-                <div style="margin-top:4px;">
-                    <label style="font-size:0.9rem;">动作词列表（逗号分隔）：</label>
-                    <input id="meng-action-words" type="text" style="width:100%;" value="${(settings.actionWords || []).join(',')}">
-                </div>
-            </div>
-        </details>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">
-            <button id="meng-save">🧧 保存设置</button>
-            <button id="meng-export">૮⸝⸝o̴̶̷᷄ ·̭ o̴̶̷̥᷅⸝⸝ა 导出规则</button>
-            <button id="meng-import">₍ᐢ⸝⸝› ̫‹⸝⸝ᐢ₎❤️‍🩹 导入规则</button>
-            <input type="file" id="meng-import-file" accept=".json" style="display:none;">
-        </div>
-    `);
-
-    // 绑定所有事件（同之前，但增加新增开关的事件）
-    // ... 名字修正、简单替换、正则、上下文删除的添加事件
-    // ... 预览、保存、导入导出事件
-
-    // 新增开关事件
-    $("#meng-protect-variables").on("change", function() {
-        settings.protectVariables = this.checked;
-        saveSettingsDebounced();
+    ctx._meng_bound = true;
+    const bind = (type, name) => ctx.eventSource.on(type, async (...args) => {
+        try {
+            if (type === ctx.event_types.CHAT_CHANGED) return;
+            const id = Number(args?.[0]);
+            if (isNaN(id)) return;
+            const msg = ctx.chat?.[id];
+            if (msg) { mengLog(`📨 ${name}: ${id}`); await processMessage(msg, id); }
+        } catch (err) {}
     });
-    $("#meng-protect-whitelist").on("change", function() {
-        settings.protectWhitelist = this.checked;
-        saveSettingsDebounced();
-    });
-    $("#meng-protect-statusbar").on("change", function() {
-        settings.protectStatusBar = this.checked;
-        saveSettingsDebounced();
-    });
-    $("#meng-sentence-optimization").on("change", function() {
-        settings.enableSentenceOptimization = this.checked;
-        saveSettingsDebounced();
-    });
-    $("#meng-action-words").on("change", function() {
-        const val = $(this).val().trim();
-        if (val) {
-            settings.actionWords = val.split(",").map(s => s.trim()).filter(Boolean);
-        } else {
-            settings.actionWords = [];
-        }
-        saveSettingsDebounced();
-    });
-
-    // ... 其余日志折叠等事件
-
-    // 初始化渲染
-    renderRuleList($namefixContainer, settings.nameFixRules);
-    renderRuleList($simpleContainer, settings.simpleReplacements, true);
-    renderRuleList($regexContainer, settings.regexRules);
-    renderRuleList($contextContainer, settings.contextRules);
+    bind(ctx.event_types.CHARACTER_MESSAGE_RENDERED, "角色消息");
+    bind(ctx.event_types.USER_MESSAGE_RENDERED, "用户消息");
+    bind(ctx.event_types.MESSAGE_SWIPED, "消息切换");
+    bind(ctx.event_types.CHAT_CHANGED, "聊天切换");
+    mengLog("🎧 消息监听绑定");
 }
 
-// ... injectPandaButton 和 RuleManager 保持不变（但需确保 RuleManager 包含完整方法）
-// 此处为节省篇幅省略，你仓库里现有的 ui.js 末尾的 RuleManager 模块可以继续用，只要把开关部分和表情替换成上面的即可。
+// ===== Panda 注入 =====
+async function injectPandaButton() {
+    if (!settings || Object.keys(settings).length === 0) {
+        mengLog("⏳ settings 未就绪，延迟注入 Panda");
+        setTimeout(injectPandaButton, 500);
+        return;
+    }
+    if (window.MengUI?.injectPandaButton) {
+        window.MengUI.injectPandaButton({
+            settings,
+            extension_settings: getSTContext()?.extension_settings,
+            saveSettingsDebounced: saveSettings,
+            PLUGIN_ID, mengLog, mengToast
+        });
+    } else setTimeout(injectPandaButton, 1000);
+}
+
+function createFloatingLogButton() {
+    if ($("#meng-log-floating-btn").length) return;
+    const btn = $(`<div id="meng-log-floating-btn" style="position:fixed;right:16px;bottom:125px;z-index:999999;background:rgba(170,255,200,0.12);border:1px solid rgba(170,255,200,0.18);backdrop-filter:blur(6px);padding:8px 12px;border-radius:14px;cursor:pointer;font-size:0.9rem;color:#d8ffe7;">😶‍🌫️ 日志</div>`);
+    btn.on("click", () => { const b = $("#meng-live-log"); if (b.length) b.toggle(); else mengToast("无日志面板"); });
+    $("body").append(btn);
+}
+
+// ===== 最终启动 =====
+(async () => {
+    try {
+        mengLog("🌿 开始执行 index.js");
+        await loadDependencies();
+        await waitModulesReady();
+        await waitForSettingsLoad();
+
+        window.MengYanChen.correctNames = window.MengYanChen.correctNames || new Set(["林晨", "谢知许", "洛君瑾"]);
+        window.MengYanChen.pendingConfirmations = window.MengYanChen.pendingConfirmations || [];
+        window.MengYanChen.messageCache = window.MengYanChen.messageCache || new WeakSet();
+        mengLog("✅ 配置已就绪");
+
+        if (window.MengRuleManager?.registerUpdateCallback) {
+            window.MengRuleManager.registerUpdateCallback(async (ns) => {
+                if (ns) { settings = Object.assign({}, settings, structuredClone(ns)); await saveSettings(); }
+            });
+        }
+
+        setInterval(() => {
+            if (!$("#meng-panda-btn").length) injectPandaButton();
+            if (!$("#meng-log-floating-btn").length) createFloatingLogButton();
+        }, 10000);
+
+        if (window.__ST_IMPORT_EXPORT_MODE__) {
+            mengLog("⚠️ 导入模式，跳过启动");
+            return;
+        }
+
+        if (document.readyState === "loading") await new Promise(r => document.addEventListener("DOMContentLoaded", r, { once: true }));
+        injectPandaButton();
+        createFloatingLogButton();
+        bindMessageEvents();
+        setInterval(() => saveSettings(), 30000);
+
+        window.MengYanChenAPI = {
+            settings, saveSettings, loadSettings: waitForSettingsLoad,
+            injectPandaButton, processMessage, mengLog, mengToast
+        };
+        mengLog("🌟 全部模块运行完成");
+    } catch (e) {
+        console.error(e);
+        mengLog("💥 启动崩溃");
+    }
+})();
