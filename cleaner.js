@@ -1,47 +1,26 @@
 // ======================
-// 梦晏晨 Cleaner Cache
+// 梦晏晨 Cleaner Ultimate
 // ======================
 
 const MENG_CACHE = new Map();
 const MAX_CACHE_SIZE = 500;
 
 function getCache(text) {
-    try {
-        if (!text) return null;
-        if (MENG_CACHE.has(text)) {
-            console.log("[梦晏晨 Cleaner] ⚡ 命中缓存");
-            return MENG_CACHE.get(text);
-        }
-    } catch(err) {}
+    if (!text) return null;
+    if (MENG_CACHE.has(text)) return MENG_CACHE.get(text);
     return null;
 }
 
 function setCache(original, cleaned) {
-    try {
-        if (!original || typeof original !== "string") return;
-        if (MENG_CACHE.size >= MAX_CACHE_SIZE) {
-            const firstKey = MENG_CACHE.keys().next().value;
-            MENG_CACHE.delete(firstKey);
-            console.log("[梦晏晨 Cleaner] 🧹 自动清理旧缓存");
-        }
-        MENG_CACHE.set(original, cleaned);
-    } catch(err) {}
+    if (!original || typeof original !== "string") return;
+    if (MENG_CACHE.size >= MAX_CACHE_SIZE) {
+        const firstKey = MENG_CACHE.keys().next().value;
+        MENG_CACHE.delete(firstKey);
+    }
+    MENG_CACHE.set(original, cleaned);
 }
 
-function clearCache() {
-    try {
-        MENG_CACHE.clear();
-        console.log("[梦晏晨 Cleaner] ♻️ 缓存已清空");
-    } catch(err) {}
-}
-
-function getCacheInfo() {
-    return { size: MENG_CACHE.size, max: MAX_CACHE_SIZE };
-}
-
-// ======================
-// 梦晏晨 Cleaner Ultimate
-// ======================
+function clearCache() { MENG_CACHE.clear(); }
 
 console.log("[梦晏晨 Cleaner] 模块开始加载...");
 
@@ -49,41 +28,22 @@ window.MengYanChen = window.MengYanChen || {};
 window.MengLogs = window.MengLogs || [];
 window.MengRuntime = window.MengRuntime || {};
 
-window.MengRuntime.cleanerLoaded = false;
 window.MengRuntime.cleanerWorking = false;
-window.MengRuntime.lastCleanTime = 0;
 
 window.mengLog = window.mengLog || function(message, type = "log") {
     const time = new Date().toLocaleTimeString();
     const finalMsg = `🕒 [${time}] ${message}`;
     window.MengLogs.push(finalMsg);
     if (window.MengLogs.length > 500) window.MengLogs.shift();
-    const liveLog = document.querySelector("#meng-live-log");
-    if (liveLog) {
-        liveLog.textContent += finalMsg + "\n";
-        liveLog.scrollTop = liveLog.scrollHeight;
-    }
     console[type]("[梦晏晨 Cleaner]", message);
-};
-
-window.mengToast = window.mengToast || function(msg) {
     try {
-        if (window.toastr) toastr.success(msg);
-        else console.log("[Toast]", msg);
-    } catch(err) {}
-    window.mengLog(msg);
+        const logBox = document.querySelector("#meng-live-log");
+        if (logBox) { logBox.textContent += finalMsg + "\n"; logBox.scrollTop = logBox.scrollHeight; }
+    } catch (err) {}
 };
 
 function escapeRegExp(str = "") {
     return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function safeSliceText(text, limit = 500000) {
-    if (!text) return "";
-    const chars = Array.from(text);
-    if (chars.length <= limit) return text;
-    window.mengLog(`⚠️ 文本过长，已截断 (原${chars.length}字符)`);
-    return chars.slice(0, limit).join('');
 }
 
 const WHITELIST = new Set([
@@ -104,9 +64,7 @@ function protectWhitelist(text) {
 }
 
 function restoreWhitelist(text, map = {}) {
-    for (const key in map) {
-        text = text.split(key).join(map[key]);
-    }
+    for (const key in map) text = text.split(key).join(map[key]);
     return text;
 }
 
@@ -123,9 +81,7 @@ function protectVariables(text) {
 }
 
 function restoreVariables(text, variableMap = {}) {
-    for (const key in variableMap) {
-        text = text.split(key).join(variableMap[key]);
-    }
+    for (const key in variableMap) text = text.split(key).join(variableMap[key]);
     return text;
 }
 
@@ -157,7 +113,6 @@ window.MengCleaner = {
     async cleanText(text, settings = {}) {
         try {
             if (!text) return text;
-
             const cached = getCache(text);
             if (cached !== null) return cached;
 
@@ -167,7 +122,7 @@ window.MengCleaner = {
             }
             window.MengRuntime.cleanerWorking = true;
 
-            text = safeSliceText(String(text));
+            text = String(text).slice(0, settings.maxTextLength || 500000);
 
             // 白名单保护（条件）
             let whiteData = { text, map: {} };
@@ -183,7 +138,7 @@ window.MengCleaner = {
                 text = varData.text;
             }
 
-            // 状态栏/XML/标签保护（条件）
+            // 状态栏/标签保护（条件）
             let statusBarMap = {};
             if (settings.protectStatusBar) {
                 let idx = 0;
@@ -200,6 +155,7 @@ window.MengCleaner = {
 
             window.mengLog("🧠 开始执行文本清洗");
 
+            // 初始化规则数组
             settings.nameFixRules = Array.isArray(settings.nameFixRules) ? settings.nameFixRules : [];
             settings.simpleReplacements = Array.isArray(settings.simpleReplacements) ? settings.simpleReplacements : [];
             settings.regexRules = Array.isArray(settings.regexRules) ? settings.regexRules : [];
@@ -207,66 +163,125 @@ window.MengCleaner = {
 
             let replaceCount = 0;
 
-            for (const rule of settings.nameFixRules) { /* 不变 */ }
-            for (const rule of settings.simpleReplacements) { /* 不变 */ }
-            for (const rule of settings.contextRules) { /* 不变 */ }
-            for (const rule of settings.regexRules) { /* 不变 */ }
+            // 名字修正
+            for (const rule of settings.nameFixRules) {
+                try {
+                    if (!rule || !rule.enabled || !rule.from || !rule.to) continue;
+                    const escaped = escapeRegExp(rule.from);
+                    if (!escaped) continue;
+                    const regex = new RegExp(escaped, "g");
+                    const before = text;
+                    text = text.replace(regex, rule.to);
+                    if (before !== text) {
+                        replaceCount++;
+                        window.mengLog(`📛 名字修正: ${rule.from} → ${rule.to}`);
+                    }
+                } catch(err) {
+                    window.mengLog(`⚠️ 名字修正规则错误: ${rule.from}`);
+                }
+            }
 
-            // 句子优化（条件 + 使用 settings.actionWords）
+            // 简单替换
+            for (const rule of settings.simpleReplacements) {
+                try {
+                    if (!rule || !rule.enabled || !rule.from) continue;
+                    const escaped = escapeRegExp(rule.from);
+                    if (!escaped) continue;
+                    const regex = new RegExp(escaped, "g");
+                    const before = text;
+                    text = text.replace(regex, rule.to || "");
+                    if (before !== text) {
+                        replaceCount++;
+                        window.mengLog(`🧹 简单替换: ${rule.from}`);
+                    }
+                } catch(err) {
+                    window.mengLog(`⚠️ 简单替换错误: ${rule.from}`);
+                }
+            }
+
+            // 上下文删除
+            for (const rule of settings.contextRules) {
+                try {
+                    if (!rule || !rule.enabled || !rule.pattern) continue;
+                    const escaped = escapeRegExp(rule.pattern);
+                    if (!escaped) continue;
+                    const regex = new RegExp(escaped, "g");
+                    const before = text;
+                    text = text.replace(regex, "");
+                    if (before !== text) {
+                        replaceCount++;
+                        window.mengLog(`✂️ Context 删除: ${rule.pattern}`);
+                    }
+                } catch(err) {
+                    window.mengLog("⚠️ Context 删除失败");
+                }
+            }
+
+            // 正则规则
+            for (const rule of settings.regexRules) {
+                try {
+                    if (!rule || !rule.enabled || !rule.pattern) continue;
+                    if (!rule._regex) {
+                        try {
+                            rule._regex = new RegExp(rule.pattern, rule.flags || "g");
+                        } catch(e) {
+                            window.mengLog(`⚠️ 无效正则: ${rule.pattern}`);
+                            continue;
+                        }
+                    }
+                    const before = text;
+                    text = text.replace(rule._regex, rule.replace || "");
+                    if (before !== text) {
+                        replaceCount++;
+                        window.mengLog(`⚙️ Regex 生效: ${rule.pattern}`);
+                    }
+                } catch(err) {
+                    window.mengLog(`⚠️ Regex 执行失败: ${rule.pattern}`);
+                }
+            }
+
+            // 句子优化（条件 + 使用可配置动作词）
             if (settings.enableSentenceOptimization) {
                 const actionWords = settings.actionWords || ["盯着","看着","笑着","沉默着","站着"];
                 const actionPattern = actionWords.join("|");
 
-                cleaned = cleaned.replace(
-                    new RegExp(`^(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？]?\\s*$`, "gm"),
-                    ""
+                text = text.replace(
+                    new RegExp(`^(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？]?\\s*$`, "gm"), ""
                 );
-                cleaned = cleaned.replace(
-                    new RegExp(`(?:^|[。！？；\\n])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？；]?`, "g"),
-                    ""
+                text = text.replace(
+                    new RegExp(`(?:^|[。！？；\\n])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[。！？；]?`, "g"), ""
                 );
-                cleaned = cleaned.replace(
-                    new RegExp(`(?:^|[。！？；])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]`, "g"),
-                    ""
+                text = text.replace(
+                    new RegExp(`(?:^|[。！？；])\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]`, "g"), ""
                 );
-                cleaned = cleaned.replace(
-                    new RegExp(`([。！？；]|^)[，,]\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]([。！？；]|$)`, "g"),
-                    "$1，$2"
+                text = text.replace(
+                    new RegExp(`([。！？；]|^)[，,]\\s*(?:\\{\\{user\\}\\}|\\{\\{char\\}\\})?\\s*(?:${actionPattern})[，,]([。！？；]|$)`, "g"), "$1，$2"
                 );
-                cleaned = cleaned.replace(/^(像|仿佛|如同|宛若)[，。！？；,]*$/gm, "");
-                cleaned = cleaned.replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ");
+                text = text.replace(/^(像|仿佛|如同|宛若)[，。！？；,]*$/gm, "");
+                text = text.replace(/(眼睛里|眼底里|眼中|眼眸中|空气中|空气里)/g, " ");
 
-                cleaned = cleaned
-                    .replace(/，\s*，/g, "，")
-                    .replace(/。\s*。/g, "。")
-                    .replace(/：\s*：/g, "：")
-                    .replace(/，\s*。/g, "。")
-                    .replace(/。\s*，/g, "，")
-                    .replace(/,\s*\./g, ".")
-                    .replace(/\.\s*,/g, ",")
-                    .replace(/[，,]{2,}/g, "，")
-                    .replace(/[。\.]{2,}/g, "。")
-                    .replace(/[！!]{2,}/g, "！")
-                    .replace(/[？?]{2,}/g, "？")
+                // 标点压缩
+                text = text.replace(/，\s*，/g, "，")
+                    .replace(/。\s*。/g, "。").replace(/：\s*：/g, "：")
+                    .replace(/，\s*。/g, "。").replace(/。\s*，/g, "，")
+                    .replace(/,\s*\./g, ".").replace(/\.\s*,/g, ",")
+                    .replace(/[，,]{2,}/g, "，").replace(/[。\.]{2,}/g, "。")
+                    .replace(/[！!]{2,}/g, "！").replace(/[？?]{2,}/g, "？")
                     .replace(/^[，。！？；：]+/gm, "")
                     .replace(/[，。！？；：]\s*[，。！？；：]+/g, "。");
 
-                cleaned = cleaned.replace(/^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？,]*$/gm, "");
-                cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-                cleaned = cleaned.replace(/[ \t]{2,}/g, "");
+                text = text.replace(/^(他|她|它|自己|对方|空气|\{\{user\}\}|\{\{char\}\})[。！？,]*$/gm, "");
+                text = text.replace(/\n{3,}/g, "\n\n");
+                text = text.replace(/[ \t]{2,}/g, "");
 
-                const sentences = cleaned.split(/([。！？])/)
+                const sentences = text.split(/([。！？])/)
                     .reduce((acc, val, idx, arr) => {
-                        if (/[。！？]/.test(val)) {
-                            acc.push((arr[idx-1] || '') + val);
-                        }
+                        if (/[。！？]/.test(val)) acc.push((arr[idx-1] || '') + val);
                         return acc;
                     }, [])
-                    .map(s => s.trim())
-                    .filter(s => s.length > 0);
+                    .map(s => s.trim()).filter(s => s.length > 0);
 
-                let paragraph = [];
-                let paragraphs = [];
+                let paragraph = [], paragraphs = [];
                 for (let i = 0; i < sentences.length; i++) {
                     paragraph.push(sentences[i]);
                     const randLength = 2 + Math.floor(Math.random() * 3);
@@ -275,11 +290,10 @@ window.MengCleaner = {
                         paragraph = [];
                     }
                 }
-                cleaned = paragraphs.join("\n\n");
+                text = paragraphs.join("\n\n");
 
-                cleaned = cleaned.replace(
-                    /[^a-zA-Z0-9\u4e00-\u9fa5，。！？、；：“”‘’（）《》〈〉【】『』…@\u{1F300}-\u{1FAFF}\s]/gu,
-                    ""
+                text = text.replace(
+                    /[^a-zA-Z0-9\u4e00-\u9fa5，。！？、；：“”‘’（）《》〈〉【】『』…@\u{1F300}-\u{1FAFF}\s]/gu, ""
                 );
             }
 
@@ -291,44 +305,40 @@ window.MengCleaner = {
             }
 
             // 恢复变量/白名单
-            if (settings.protectVariables) {
-                text = restoreVariables(text, varData.variableMap);
-            }
-            if (settings.protectWhitelist) {
-                text = restoreWhitelist(text, whiteData.map);
+            if (settings.protectVariables) text = restoreVariables(text, varData.variableMap);
+            if (settings.protectWhitelist) text = restoreWhitelist(text, whiteData.map);
+
+            // URL/Email 保护 + 恢复
+            text = text.replace(/(https?:\/\/[^\s]+)/g, m => `__MENG_URL__${safeBtoa(m)}__`);
+            text = text.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+)/g, m => `__MENG_EMAIL__${safeBtoa(m)}__`);
+            text = text.replace(/__MENG_URL__(.*?)__/g, (_, encoded) => { try { return safeAtob(encoded); } catch { return ""; } });
+            text = text.replace(/__MENG_EMAIL__(.*?)__/g, (_, encoded) => { try { return safeAtob(encoded); } catch { return ""; } });
+
+            // 安全结果
+            if (typeof text !== "string") text = String(text || "");
+            if (!text.trim()) {
+                window.MengRuntime.cleanerWorking = false;
+                return "";
             }
 
-            // ... 后续 URL/Email 恢复等不变
-            // 缓存写入
             setCache(arguments[0] || text, text);
             window.MengRuntime.lastCleanTime = Date.now();
             window.mengLog(`✅ 文本清洗完成 (${replaceCount} 项命中)`);
             window.MengRuntime.cleanerWorking = false;
             return text;
+
         } catch(err) {
             console.error("[梦晏晨 Cleaner] 崩溃:", err);
             window.mengLog(`💥 Cleaner崩溃: ${err.message || err}`);
             window.MengRuntime.cleanerWorking = false;
-            try {
-                return String(text || "");
-            } catch {
-                return "";
-            }
+            try { return String(text || ""); } catch { return ""; }
         }
     }
 };
 
-window.MengRuntime.cleanerLoaded = true;
-window.mengLog("✅ Cleaner 模块加载完成");
-window.mengLog("🧠 AI名字学习系统已启动");
-window.mengLog("🛡️ 白名单保护系统已启动");
-window.mengLog("⚙️ Regex 安全编译系统已启动");
-window.mengLog("📦 变量保护系统已启动");
-window.mengLog("🔒 Cleaner 崩溃保护已启动");
-window.mengLog("💾 文本缓存已启用");
-window.mengLog("✨ Ultimate Cleaner Ready");
-
 window.MengCleanerAPI = {
     clean: window.MengCleaner.cleanText,
-    cache: { getCache, setCache, clearCache, getCacheInfo }
+    cache: { getCache, setCache, clearCache }
 };
+
+console.log("[梦晏晨 Cleaner] ✅ Cleaner 模块加载完成");
