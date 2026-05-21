@@ -1,4 +1,4 @@
-// ===== UI 文件: ui.js (最终稳定版，含完整 RuleManager) =====
+// ===== UI 文件: ui.js (最终稳定版，所有开关 + RuleManager) =====
 
 function escapeHtml(str = "") {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -273,29 +273,13 @@ function openMengPanel(context) {
     });
 
     // 开关事件
-    $("#meng-protect-variables").on("change", function() {
-        settings.protectVariables = this.checked;
-        saveSettingsDebounced();
-    });
-    $("#meng-protect-whitelist").on("change", function() {
-        settings.protectWhitelist = this.checked;
-        saveSettingsDebounced();
-    });
-    $("#meng-protect-statusbar").on("change", function() {
-        settings.protectStatusBar = this.checked;
-        saveSettingsDebounced();
-    });
-    $("#meng-sentence-optimization").on("change", function() {
-        settings.enableSentenceOptimization = this.checked;
-        saveSettingsDebounced();
-    });
+    $("#meng-protect-variables").on("change", function() { settings.protectVariables = this.checked; saveSettingsDebounced(); });
+    $("#meng-protect-whitelist").on("change", function() { settings.protectWhitelist = this.checked; saveSettingsDebounced(); });
+    $("#meng-protect-statusbar").on("change", function() { settings.protectStatusBar = this.checked; saveSettingsDebounced(); });
+    $("#meng-sentence-optimization").on("change", function() { settings.enableSentenceOptimization = this.checked; saveSettingsDebounced(); });
     $("#meng-action-words").on("change", function() {
         const val = $(this).val().trim();
-        if (val) {
-            settings.actionWords = val.split(",").map(s => s.trim()).filter(Boolean);
-        } else {
-            settings.actionWords = [];
-        }
+        settings.actionWords = val ? val.split(",").map(s => s.trim()).filter(Boolean) : [];
         saveSettingsDebounced();
     });
 
@@ -310,16 +294,12 @@ function openMengPanel(context) {
     });
 }
 
-// ================== Panda 按钮注入 ==================
+// Panda 按钮
 function injectPandaButton(context) {
     const target = $("#data_bank_wand_container");
     if (!target.length) { setTimeout(() => injectPandaButton(context), 500); return; }
     if ($("#meng-panda-btn").length) return;
-    const btn = $(`
-        <div id="meng-panda-btn" style="cursor:pointer; padding:6px 10px; border-radius:12px; background:rgba(0,128,0,0.15); display:flex; align-items:center; gap:6px; font-size:1rem; margin-top:4px; user-select:none; transition:background 0.25s;">
-            <span>🐼</span><span>梦晏晨</span>
-        </div>
-    `);
+    const btn = $(`<div id="meng-panda-btn" style="cursor:pointer;padding:6px 10px;border-radius:12px;background:rgba(0,128,0,0.15);display:flex;align-items:center;gap:6px;font-size:1rem;margin-top:4px;user-select:none;transition:background 0.25s;"><span>🐼</span><span>梦晏晨</span></div>`);
     btn.hover(
         () => btn.css("background", "rgba(0,128,0,0.25)"),
         () => btn.css("background", "rgba(0,128,0,0.15)")
@@ -333,7 +313,7 @@ window.MengUI = window.MengUI || {};
 window.MengUI.openMengPanel = openMengPanel;
 window.MengUI.injectPandaButton = injectPandaButton;
 
-// ================== RuleManager 模块（完整实现） ==================
+// RuleManager 模块
 (function() {
     let rules = [];
     const STORAGE_KEY = "meng_rule_manager_rules";
@@ -347,51 +327,37 @@ window.MengUI.injectPandaButton = injectPandaButton;
         } catch (e) { rules = []; }
     }
 
-    async function saveRules() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-            notifyUpdate();
-            return true;
-        } catch { return false; }
-    }
+    async function saveRules() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); notifyUpdate(); return true; } catch { return false; } }
 
     async function addRule(rule) {
         if (!rule || typeof rule !== "object") return false;
         if (typeof rule.enabled !== "boolean") rule.enabled = true;
-        if (!rule.id) rule.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-        rules.push(rule);
-        await saveRules();
-        return true;
+        if (!rule.id) rule.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+        rules.push(rule); await saveRules(); return true;
     }
 
-    async function removeRule(ruleId) {
-        const oldLen = rules.length;
-        rules = rules.filter(r => r.id !== ruleId);
-        if (rules.length === oldLen) return false;
-        await saveRules();
-        return true;
+    async function removeRule(id) {
+        const len = rules.length;
+        rules = rules.filter(r => r.id !== id);
+        if (rules.length === len) return false;
+        await saveRules(); return true;
     }
 
-    async function updateRule(ruleId, newData) {
-        const target = rules.find(r => r.id === ruleId);
+    async function updateRule(id, data) {
+        const target = rules.find(r => r.id === id);
         if (!target) return false;
-        Object.assign(target, newData);
-        if (target.type === "regex") {
-            try { target._regex = new RegExp(target.pattern, target.flags || "g"); } catch {}
-        }
-        await saveRules();
-        return true;
+        Object.assign(target, data);
+        if (target.type === "regex") try { target._regex = new RegExp(target.pattern, target.flags || "g"); } catch {}
+        await saveRules(); return true;
     }
 
-    async function toggleRule(ruleId, enabled) {
-        const target = rules.find(r => r.id === ruleId);
+    async function toggleRule(id, enabled) {
+        const target = rules.find(r => r.id === id);
         if (!target) return false;
-        target.enabled = !!enabled;
-        await saveRules();
-        return true;
+        target.enabled = !!enabled; await saveRules(); return true;
     }
 
-    async function clearRules(type = null) {
+    async function clearRules(type) {
         if (!type) rules = [];
         else rules = rules.filter(r => r.type !== type);
         await saveRules();
@@ -401,10 +367,8 @@ window.MengUI.injectPandaButton = injectPandaButton;
         const blob = new Blob([JSON.stringify(rules, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         const url = URL.createObjectURL(blob);
-        a.href = url;
-        a.download = `梦晏晨规则备份_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        a.href = url; a.download = `梦晏晨规则备份_${new Date().toISOString().slice(0,10)}.json`;
+        a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     async function importRules(json) {
@@ -414,41 +378,29 @@ window.MengUI.injectPandaButton = injectPandaButton;
             imported.forEach(r => {
                 if (r.type === "regex") try { r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
                 if (typeof r.enabled !== "boolean") r.enabled = true;
-                if (!r.id) r.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+                if (!r.id) r.id = "meng_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
             });
-            rules = imported;
-            await saveRules();
-            return true;
+            rules = imported; await saveRules(); return true;
         } catch { return false; }
     }
 
-    function registerUpdateCallback(callback) {
-        if (typeof callback === "function") updateCallbacks.push(callback);
-    }
+    function registerUpdateCallback(fn) { if (typeof fn === "function") updateCallbacks.push(fn); }
 
-    function notifyUpdate() {
-        updateCallbacks.forEach(fn => { try { fn(rules); } catch {} });
-    }
+    function notifyUpdate() { updateCallbacks.forEach(fn => { try { fn(rules); } catch {} }); }
 
     function restoreRegexCache() {
-        rules.forEach(r => {
-            if (r.type === "regex" && !r._regex) try { r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {}
-        });
+        rules.forEach(r => { if (r.type === "regex" && !r._regex) try { r._regex = new RegExp(r.pattern, r.flags || "g"); } catch {} });
     }
 
     function syncUI() {
-        if (!window.MengUI || typeof window.MengUI.renderRuleList !== "function") return;
+        if (!window.MengUI?.renderRuleList) return;
         window.MengUI.renderRuleList("#meng-namefix-container", rules.filter(r => r.type === "nameFix"));
         window.MengUI.renderRuleList("#meng-simple-container", rules.filter(r => r.type === "simple"), true);
         window.MengUI.renderRuleList("#meng-regex-container", rules.filter(r => r.type === "regex"));
         window.MengUI.renderRuleList("#meng-context-container", rules.filter(r => r.type === "context"));
     }
 
-    async function initialize() {
-        await loadRules();
-        notifyUpdate();
-        console.log(`[梦晏晨 RuleManager] ✅ 初始化完成，共 ${rules.length} 条规则`);
-    }
+    async function initialize() { await loadRules(); notifyUpdate(); }
 
     setInterval(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); } catch {} }, 1000 * 60 * 3);
     window.addEventListener("beforeunload", () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); } catch {} });
@@ -461,16 +413,7 @@ window.MengUI.injectPandaButton = injectPandaButton;
     initialize();
 })();
 
-// 全局错误日志
-window.addEventListener("error", (e) => {
-    console.error("[梦晏晨] ❌ 全局错误", e.error);
-    const $l = $("#meng-live-log");
-    if ($l.length) $l.append(`🕒 [${new Date().toLocaleTimeString()}] ❌ 错误: ${e.message || "未知"}\n`);
-});
-window.addEventListener("unhandledrejection", (e) => {
-    console.error("[梦晏晨] ❌ Promise 错误", e.reason);
-    const $l = $("#meng-live-log");
-    if ($l.length) $l.append(`🕒 [${new Date().toLocaleTimeString()}] ❌ Promise: ${String(e.reason)}\n`);
-});
+window.addEventListener("error", e => { console.error("[梦晏晨] ❌ 全局错误", e.error); });
+window.addEventListener("unhandledrejection", e => { console.error("[梦晏晨] ❌ Promise 错误", e.reason); });
 
 console.log("[梦晏晨] ui.js 加载完成");
