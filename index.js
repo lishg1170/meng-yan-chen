@@ -1,5 +1,5 @@
 // ======================
-// 梦晏晨 Ultimate Index
+// 梦晏晨 Ultimate Index 别崩溃求你了
 // index.js (localStorage 持久化 + 可视化开关)
 // ======================
 
